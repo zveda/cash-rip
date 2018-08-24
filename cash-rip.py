@@ -71,13 +71,13 @@ def updateContracts():
 	f.close()
 
 def backupContract(c):
-	c2 = c.copy()
+	c2 = copy.deepcopy(c)
 	c2["my_addr"] = c2["my_addr"].to_ui_string()
 	if "address" in c2:
 		c2["address"] = c2["address"].to_ui_string()
-		c["partner_addr"] = c2["partner_addr"].to_ui_string()
+		c2["partner_addr"] = c2["partner_addr"].to_ui_string()
 	f = open('./contracts-bkp.txt', 'a')
-	f.write(json_encode(c))
+	f.write(json_encode(c2))
 	f.close()	
 
 def loadContracts():
@@ -335,7 +335,12 @@ def main():
 	parser_genmultisig.add_argument('contractindex', type=int, help='Your contract index that you want to use.')
 	parser_genmultisig.add_argument('x_pubkey', type=str, help="partner's x_pubkey")
 
-	parser_requestrelease = subparsers.add_parser('requestrelease', help='Ask the buyer to release the coins to you by sending him the result of this command. Inputs: contractindex, to_address (where the coins will be sent).')
+	parser_checkaddress = subparsers.add_parser('checkaddress', help='Check the multisig address your partner generated. Takes as input the contractindex of your relevant contract (that contains the x_pubkey you first sent your partner), the address your partner generated, and his x_pubkey')
+	parser_checkaddress.add_argument('contractindex', type=int, help='Your contract index that you want to use.')
+	parser_checkaddress.add_argument('address', type=str, help="multisig address your partner generated and sent you")
+	parser_checkaddress.add_argument('x_pubkey', type=str, help="partner's x_pubkey")
+
+	parser_requestrelease = subparsers.add_parser('requestrelease', help='Ask the buyer to release the coins to you by sending him the result of this command. Inputs: contractindex, to_address (where the coins will be released to).')
 	parser_requestrelease.add_argument('contractindex', type=int, help='requestrelease help')
 	parser_requestrelease.add_argument('to_address', type=str, help='requestrelease help')	
 
@@ -371,7 +376,14 @@ def main():
 		contract = create_multisig_addr(args.contractindex, args.x_pubkey)
 		print("Address: {}\n Your x_pubkey: {}\n Partner x_pubkey: {}\n".format(contract["address"], contract["my_x_pubkey"], contract["partner_x_pubkey"]))
 		print("You can now send funds to the multisig address {} This will tear your bitcoin cash in half.".format(contract["address"]))
-	
+
+	elif args.command == 'checkaddress':
+		contract = create_multisig_addr(args.contractindex, args.x_pubkey, False)	
+		if contract["address"].to_ui_string() == args.address:
+			print("Success. You and your partner generated the same address. You can now send funds to {}".format(args.address))
+		else:
+			print("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
+
 	elif args.command == 'requestrelease':
 		network = Network(None)
 		network.start()
