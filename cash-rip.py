@@ -25,13 +25,12 @@
 
 from electroncash.address import Address
 from electroncash.storage import WalletStorage
-from electroncash.wallet import Wallet
+from electroncash.wallet import Wallet, ImportedAddressWallet
 from electroncash.mnemonic import Mnemonic
 from electroncash.util import print_msg, json_encode, json_decode
 from electroncash import SimpleConfig, Network, keystore, commands
 from electroncash.bitcoin import COIN
 import sys, copy
-#import json
 
 def genContractWallet(nickname=None):
 	if nickname:
@@ -76,9 +75,18 @@ def genContractWallet(nickname=None):
 	#print(contracts)
 	updateContracts()
 	return wallet, contracts[-1]
-#def genCashRipKey():
 
-#def genCashRipRequest():
+def testImportedAddrWallet(addrStr):
+	network = Network(None)
+	network.start()
+	storage = WalletStorage('./wallets/test.wallet')
+	wal = ImportedAddressWallet.from_text(storage, addrStr)
+	print(wal)
+	wal.start_threads(network)
+	wal.synchronize()
+	wal.wait_until_synchronized()
+	bal = wal.get_balance()
+	print(bal)
 
 def updateContracts():
 	if contracts == '' or contracts == []:
@@ -423,10 +431,10 @@ def main():
 		#print(c.deserialize(args.transaction_hex))
 		sign_broadcast_tx_from_partner(args.transaction_hex, args.contractindex, network)
 		
- #TODO need to add one more option for checking multisig address
 if __name__ == '__main__':
 	main()
 	#test()
+	#testImportedAddrWallet("ppssl66pryy3d34cd7feccjw69pdds4luqc3qkvx63")
 
 #test2()
 
