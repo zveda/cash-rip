@@ -30,9 +30,11 @@ from electroncash.mnemonic import Mnemonic
 from electroncash.util import print_msg, json_encode, json_decode
 from electroncash import SimpleConfig, Network, keystore, commands
 from electroncash.bitcoin import COIN
-import sys, copy
+import sys, copy, os
 
 def genContractWallet(nickname=None):
+	if not os.path.isdir('./wallets'):
+		os.mkdir('./wallets')
 	if nickname:
 		for i,c in enumerate(contracts):
 			if c["nickname"] == nickname:
@@ -76,22 +78,17 @@ def genContractWallet(nickname=None):
 	updateContracts()
 	return wallet, contracts[-1]
 
-def testImportedAddrWallet(addrStr):
-	network = Network(None)
-	network.start()
-	storage = WalletStorage('./wallets/test.wallet')
-	wal = ImportedAddressWallet.from_text(storage, addrStr)
-	print(wal)
-	wal.start_threads(network)
-	wal.synchronize()
-	wal.wait_until_synchronized()
-	bal = wal.get_balance()
-	print(bal)
+def delContract(idx):
+	os.remove(contracts[idx]['walletFile'])
+	if 'address' in contracts[idx]:
+		os.remove(contracts[idx]['addrWalletFile'])
+	del contracts[idx]
+	updateContracts()
 
 def updateContracts():
-	if contracts == '' or contracts == []:
-		print_message("Contracts list is empty. Something went wrong.")
-		return
+#	if contracts == '' or contracts == []:
+#		print_message("Contracts list is empty. Something went wrong.")
+#		return
 	contracts2 = copy.deepcopy(contracts)
 	for c in contracts2:
 		c["my_addr"] = c["my_addr"].to_ui_string()
@@ -141,6 +138,12 @@ def getContractWallet(idx):
 		wallet = Wallet(storage)
 		return wallet
 
+def getAddressWallet(idx):
+	storage = WalletStorage(contracts[idx]['addrWalletFile'])
+	if storage.file_exists():
+		wallet = Wallet(storage)
+		return wallet	
+
 def getContractWalletBalances(network):
 	balancesStandard = {}
 	balancesMulti = {}
@@ -155,9 +158,14 @@ def getContractWalletBalances(network):
 		#print_msg("=======================Contract %s has balance: %s" % (i, wal.get_balance()))
 		balancesStandard[con['walletFile']] = wal.get_balance()
 		if "address" in con.keys():
-			c = commands.Commands(None, wal, network)
-			addr = con["address"].to_ui_string()
-			balancesMulti[addr] = c.getaddressbalance(addr)
+			#c = commands.Commands(None, wal, network)
+			#addr = con["address"].to_ui_string()
+			#balancesMulti[addr] = c.getaddressbalance(addr)
+			wal2 = getAddressWallet(i)
+			wal2.start_threads(network)
+			wal2.synchronize()
+			wal2.wait_until_synchronized()
+			balancesMulti[con['address'].to_ui_string()] = wal2.get_balance()
 	return balancesStandard, balancesMulti
 
 def get_tx_size(tx):
@@ -170,7 +178,21 @@ def get_x_pubkey(addr_index, wallet):
 	xp.xpub = wallet.get_master_public_key()
 	return xp.get_xpubkey(False, addr_index)
 
-#idx is contract index	 
+def testImportedAddrWallet(addrStr):
+	network = Network(None)
+	network.start()
+	storage = WalletStorage('./wallets/test.wallet')
+	wal = ImportedAddressWallet.from_text(storage, addrStr)
+	print(wal)
+	wal.start_threads(network)
+	wal.synchronize()
+	wal.wait_until_synchronized()
+	bal = wal.get_balance()
+	print(bal)
+
+
+#idx is contract index	
+#if generated_by_me is False, partner must have generated the address, so we are checking the address was generated correctly. my_pubkey and partner_pubkey must be in different order. 
 def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
 	wallet = getContractWallet(idx)
 	c = commands.Commands(None, wallet, None)
@@ -192,10 +214,24 @@ def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
 	contract["partner_addr"] = partner_address
 	contract["partner_x_pubkey"] = partner_x_pubkey
 	contract["partner_pubkey"] = partner_pubkey
+	contract["gen_by_me"] = generated_by_me
+
+	addrWalletFile = contract["walletFile"][:-7]+"-address.wallet"
+	print("addrWalletFile: {}".format(addrWalletFile))
+	storage = WalletStorage(addrWalletFile)
+	if storage.file_exists():
+		os.remove(addrWalletFile)
+		storage = WalletStorage(addrWalletFile)
+	wal = ImportedAddressWallet.from_text(storage, contract["address"].to_ui_string())
+	wal.synchronize()
+	wal.storage.write()
+	print_msg("Wallet saved in '%s'" % wal.storage.path)
+	contract["addrWalletFile"] = addrWalletFile
 	#print_msg("contracts now: %s" % contracts)
 	updateContracts()
 	return contract
-
+	
+	
 #idx is contract index, to_addr is Address object
 def maketx_from_multisig(idx, to_addr, network):
 	#initial_params = {'num_sig': 2, 'sequence': 4294967294, 'signatures': [None, None], 'type': 'p2sh'}
@@ -204,17 +240,23 @@ def maketx_from_multisig(idx, to_addr, network):
 		raise Exception("This contract does not have a multisig address yet. Generate one first.")
 		#sys.exit()	
 	wallet = getContractWallet(idx)
+	walletAddr = getAddressWallet(idx)
 	c = commands.Commands(None, wallet, network)
 	address_str = contract['address'].to_ui_string()
-	#This is not using SPV but a walletless server query. TODO use ImportedAddressWallet to import multisig address and SPV it perhaps
-	addr_balance = c.getaddressbalance(address_str)
-	total_balance = float(addr_balance['confirmed'])+float(addr_balance['unconfirmed'])
-	total_balance = int(total_balance*COIN)
+	#addr_balance = c.getaddressbalance(address_str)
+	#total_balance = float(addr_balance['confirmed'])+float(addr_balance['unconfirmed'])
+	#total_balance = int(total_balance*COIN)
+	(standard, multis) = getContractWalletBalances(network)
+	print(multis)
+	total_balance = sum(multis[address_str])
+	print("********************************total balance: {}".format(total_balance))
 	if total_balance == 0:
 		return False
-	#TODO: this should perhaps use getaddressunspent instead
-	hist = c.getaddresshistory(address_str)
-	prev_relevant_outputs = []
+	#hist = c.getaddresshistory(address_str) 
+	utxos = walletAddr.get_utxos()
+	#print("********************************hist is: {}".format(hist))
+	#print("********************************utxos is: {}".format(utxos))
+	'''prev_relevant_outputs = []
 	for tx in hist:
 		fulltx = c.gettransaction(tx["tx_hash"])
 		fulltx = c.deserialize(fulltx) 
@@ -222,9 +264,9 @@ def maketx_from_multisig(idx, to_addr, network):
 			if output["address"].to_ui_string() == address_str:
 				output["prevout_hash"] = tx["tx_hash"]
 				prev_relevant_outputs.append(output)
-	#print(prev_relevant_outputs)
+	print("********************************prev_relevant_outputs is: {}".format(prev_relevant_outputs))'''
 	inp = []
-	for output in prev_relevant_outputs:
+	for output in utxos:
 		inp.append( {"value": output["value"], 
 					"prevout_n": output["prevout_n"], 
 					"prevout_hash": output["prevout_hash"], 
@@ -235,7 +277,10 @@ def maketx_from_multisig(idx, to_addr, network):
 					"redeemScript": contract["redeemScript"], 
 					"pubkeys": [contract["my_pubkey"], contract["partner_pubkey"]], 
 					"x_pubkeys": [contract["my_x_pubkey"], contract["partner_x_pubkey"]]})
-
+	if not contract['gen_by_me']:
+		for i in inp:
+			i["pubkeys"] = [contract["partner_pubkey"], contract["my_pubkey"]]
+			i["x_pubkeys"] = [contract["partner_x_pubkey"], contract["my_x_pubkey"]]
 	outp = [{		"type": 0, 
 					"address": to_addr, 
 					"value": total_balance-500, 
@@ -250,7 +295,7 @@ def maketx_from_multisig(idx, to_addr, network):
 	txS = c.serialize(tx)
 	#print (c.deserialize(txS))
 	signedtx = c.signtransaction(txS)
-	print("signing once")
+	#print("signing once")
 	return signedtx
 
 '''Here we assume our partner has sent us a transaction signed by him. We just need to sign it and broadcast'''
@@ -259,7 +304,7 @@ def sign_broadcast_tx_from_partner(tx, my_wallet_index, network):
 	c = commands.Commands(None, wallet1, network)
 	txSigned = c.signtransaction(tx)
 	print_msg("size is: %s" % get_tx_size(txSigned))
-	#print(c.deserialize(txSigned))
+	print(c.deserialize(txSigned))
 	c.broadcast(txSigned)
 '''
 def user_input():
@@ -333,6 +378,8 @@ def test():
 #def deleteContract():
 
 def test2():
+	network = Network(None)
+	network.start()
 	#wallet = genContractWallet()
 	#wallet1 = genContractWallet()
 	#print(len(contracts))
@@ -341,15 +388,28 @@ def test2():
 	partner_x_pubkey = get_x_pubkey(0, wallet1)
 	#print_msg("partner xpubkey: %s" % partner_x_pubkey)
 	create_multisig_addr(0, partner_x_pubkey)
+	print(getContractWalletBalances(network))
 
 def test3():
 	network = Network(None)
 	network.start()
-	to_addr = Address.from_string("bitcoincash:qqdn3u8cdfg355w2pcplq7th4x0qmd9fjqlwgnaj8w")
+	to_addr = Address.from_string("bitcoincash:qqj4pf98k326u53ns75ap7lm4xp7a9upyc9nwcxrun")
 	tx = maketx_from_multisig(0, to_addr, network)
 	print_msg("Are we broadcasting tx?: {}".format(tx))
-	if tx:
-		sign_broadcast_tx_from_partner(tx, 1)
+	#if tx:
+	#	sign_broadcast_tx_from_partner(tx, 1)
+
+def testImportedAddrWallet(addrStr):
+	network = Network(None)
+	network.start()
+	storage = WalletStorage('./wallets/test.wallet')
+	wal = ImportedAddressWallet.from_text(storage, addrStr)
+	print(wal)
+	wal.start_threads(network)
+	wal.synchronize()
+	wal.wait_until_synchronized()
+	bal = wal.get_balance()
+	print(bal)
 
 def main():
 	import argparse
@@ -363,6 +423,9 @@ def main():
 	parser_listcontracts = subparsers.add_parser('listcontracts', help='List your created contracts and their states.')
 
 	parser_gencontract = subparsers.add_parser('gencontract', help='Create a contract.')
+
+	parser_delcontract = subparsers.add_parser('delcontract', help='Delete a contract. Input: contract index.')
+	parser_delcontract.add_argument('contractindex', type=int, help='Contract index that you want to delete.')
 
 	parser_genmultisig = subparsers.add_parser('genmultisig', help='Create a multisig address. Takes as input the contractindex of one of your created contracts, as well as partner\'s x_pubkey')
 	parser_genmultisig.add_argument('contractindex', type=int, help='Your contract index that you want to use.')
@@ -398,12 +461,16 @@ def main():
 		for i,c in enumerate(contracts):
 			if 'address' in c:
 				addr = c['address'].to_ui_string()
-				print("Contract index: {}\taddress: {}\tbalance: {}\t".format(i, addr, multi[addr]) ) 
+				print("Contract index: {}\taddress: {}\tbalance: confirmed {} BCH, unconfirmed {} BCH\t".format(i, addr, multi[addr][0]/COIN, multi[addr][1]/COIN) ) 
 			else:
 				print("Contract index: {}\t No multisig address generated yet.".format(i)) 
 	elif args.command == 'gencontract':
 		wallet, contract = genContractWallet()
 		print("Give this x_pubkey to the other party:\n {}".format(contract['my_x_pubkey']))
+
+	elif args.command == 'delcontract':
+		#print(args.contractindex, type(args.contractindex))
+		delContract(args.contractindex)
 
 	elif args.command == 'genmultisig': 
 		contract = create_multisig_addr(args.contractindex, args.x_pubkey)
@@ -433,7 +500,7 @@ def main():
 		
 if __name__ == '__main__':
 	main()
-	#test()
+	#test3()
 	#testImportedAddrWallet("ppssl66pryy3d34cd7feccjw69pdds4luqc3qkvx63")
 
 #test2()
