@@ -30,7 +30,13 @@ from electroncash.mnemonic import Mnemonic
 from electroncash.util import print_msg, json_encode, json_decode
 from electroncash import SimpleConfig, Network, keystore, commands
 from electroncash.bitcoin import COIN
+from contextlib import redirect_stdout, redirect_stderr
 import sys, copy, os
+#from electroncash.networks import NetworkConstants
+#NetworkConstants.set_testnet()
+#f = open('/dev/null', 'w')
+#sys.stderr = f
+
 
 def genContractWallet(nickname=None):
 	if not os.path.isdir('./wallets'):
@@ -217,7 +223,7 @@ def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
 	contract["gen_by_me"] = generated_by_me
 
 	addrWalletFile = contract["walletFile"][:-7]+"-address.wallet"
-	print("addrWalletFile: {}".format(addrWalletFile))
+	#print("addrWalletFile: {}".format(addrWalletFile))
 	storage = WalletStorage(addrWalletFile)
 	if storage.file_exists():
 		os.remove(addrWalletFile)
@@ -247,7 +253,7 @@ def maketx_from_multisig(idx, to_addr, network):
 	#total_balance = float(addr_balance['confirmed'])+float(addr_balance['unconfirmed'])
 	#total_balance = int(total_balance*COIN)
 	(standard, multis) = getContractWalletBalances(network)
-	print(multis)
+	#print(multis)
 	total_balance = sum(multis[address_str])
 	print("********************************total balance: {}".format(total_balance))
 	if total_balance == 0:
@@ -453,9 +459,12 @@ def main():
 	#	idx = contracts.index(contract)	
 
 	if args.command == 'listcontracts':
-		network = Network(None)
-		network.start()
-		standard, multi = getContractWalletBalances(network)
+		with open('/dev/null', 'w') as f:
+			with redirect_stderr(f):
+				network = Network(None)
+				network.start()
+				standard, multi = getContractWalletBalances(network)
+				network.stop_network()
 		#print(multi)
 		#print(standard, multi)
 		for i,c in enumerate(contracts):
@@ -465,7 +474,9 @@ def main():
 			else:
 				print("Contract index: {}\t No multisig address generated yet.".format(i)) 
 	elif args.command == 'gencontract':
-		wallet, contract = genContractWallet()
+		with open('/dev/null', 'w') as f:
+			with redirect_stderr(f):
+				wallet, contract = genContractWallet()
 		print("Give this x_pubkey to the other party:\n {}".format(contract['my_x_pubkey']))
 
 	elif args.command == 'delcontract':
@@ -473,30 +484,38 @@ def main():
 		delContract(args.contractindex)
 
 	elif args.command == 'genmultisig': 
-		contract = create_multisig_addr(args.contractindex, args.x_pubkey)
-		print("Address: {}\n Your x_pubkey: {}\n Partner x_pubkey: {}\n".format(contract["address"], contract["my_x_pubkey"], contract["partner_x_pubkey"]))
+		with open('/dev/null', 'w') as f:
+			with redirect_stderr(f):
+				contract = create_multisig_addr(args.contractindex, args.x_pubkey)
+		print("\nAddress: {}\n Your x_pubkey: {}\n Partner x_pubkey: {}\n".format(contract["address"], contract["my_x_pubkey"], contract["partner_x_pubkey"]))
 		print("You can now send funds to the multisig address {} This will tear your bitcoin cash in half.".format(contract["address"]))
 
 	elif args.command == 'checkaddress':
-		contract = create_multisig_addr(args.contractindex, args.x_pubkey, False)	
+		with open('/dev/null', 'w') as f:
+			with redirect_stderr(f):
+				contract = create_multisig_addr(args.contractindex, args.x_pubkey, False)	
 		if contract["address"].to_ui_string() == args.address:
 			print("Success. You and your partner generated the same address. You can now send funds to {}".format(args.address))
 		else:
 			print("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
 
 	elif args.command == 'requestrelease':
-		network = Network(None)
-		network.start()
-		tx = maketx_from_multisig(args.contractindex, Address.from_string(args.to_address), network)
+		with open('/dev/null', 'w') as f:
+			with redirect_stderr(f):
+				network = Network(None)
+				network.start()
+				tx = maketx_from_multisig(args.contractindex, Address.from_string(args.to_address), network)
+		print("Send this transaction hex to your partner. He needs it to release your funds:")
 		print(tx['hex'])
-		print("Send this to your partner. He needs it to release your funds.")
 
 	elif args.command == 'release':
-		network = Network(None)
-		network.start()
-		#c = commands.Commands(None, None, network) #delet later
-		#print(c.deserialize(args.transaction_hex))
-		sign_broadcast_tx_from_partner(args.transaction_hex, args.contractindex, network)
+		with open('/dev/null', 'w') as f:
+			with redirect_stderr(f):
+				network = Network(None)
+				network.start()
+				#c = commands.Commands(None, None, network) #delet later
+				#print(c.deserialize(args.transaction_hex))
+				sign_broadcast_tx_from_partner(args.transaction_hex, args.contractindex, network)
 		
 if __name__ == '__main__':
 	main()
