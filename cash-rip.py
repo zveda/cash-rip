@@ -3,7 +3,7 @@
 #
 #MIT License
 
-#Copyright (c) 2018 Ilia Zvedeniouk
+#Copyright (c) 2018 zveda
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -313,41 +313,6 @@ def sign_broadcast_tx_from_partner(tx, my_wallet_index, network):
 	#print(c.deserialize(txSigned))
 	c.broadcast(txSigned)
 	print("Transaction of size {} bytes has been broadcast.".format(get_tx_size(txSigned)))
-'''
-def user_input():
-	while True:
-		n = raw_input("Are you a 1) Buyer (sending coins)\n2) Merchant (receiving coins)\n")
-		if n == 1:
-			n = raw_input("Select from the following:\n1) Create new contract and get x_pubkey to send to the merchant.\n 2) Send money to merchant multisig.\n")
-			if n == 1:
-				refund = raw_input("Please give your refund address:\n")
-				(wallet, contract) = genContractWallet()
-				print_msg("Wallet created. Please give this to the merchant: {} {}".format(refund, contract["my_x_pubkey"]))
-				exit()
-			elif n == 2:
-				txhex = raw_input("Please paste transaction hex that the merchant gave you:\n")
-				c = commands.Commands(None, None, None)
-				tx = c.deserialize(txhex)
-				if len(tx['outputs']) > 1:
-					print_msg("Transaction should not have multiple outputs.")
-					exit()
-				yn  = raw_input("Are you sure you want to send {} BCH to {}? y/n".format(tx['outputs'][0]['value']/COIN), tx['outputs'][0]['address'].to_ui_string())
-					if yn == 'y' or yn == 'Y' or yn == 'yes' or yn == 'Yes' or yn == 'YES':
-						for i,c in enumerate(contracts):
-							wal = getContractWallet(i)
-							addr = c["my_pubkey"]
-							if wal.is_mine(addr):
-								sign_broadcast_tx_from_partner(tx, i)
-								exit()
-					else:
-						exit()
-			else:
-				exit()
-		if n == 2:
-			n = raw_input("Please select from the following: \n1) If you have your partner's x_pubkey, create multisig address with it to give back to him. \n 2) Create transaction to send coins from existing multisig (to an address you control.")
-			if n == 1:
-'''					
-
 
 def test():
 	stor = WalletStorage('/home/ilia/.electron-cash/wallets/default_wallet')
@@ -465,7 +430,7 @@ def main():
 			network = Network(None)
 			network.start()
 			standard, multi = getContractWalletBalances(network)
-			network.stop_network()
+			network.stop()
 		#print(multi)
 		#print(standard, multi)
 		for i,c in enumerate(contracts):
