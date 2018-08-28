@@ -485,22 +485,4 @@ if __name__ == '__main__':
 
 #test2()
 
-#(b1,b2) = getContractWalletBalances(network)
-#print_msg("contract wallet balances: %s %s" % (b1, b2))
-
-#test3()
-#maketx_from_multisig(2, 'abc')
-#wallet2 = getContractWallet(2)
-#partner_x_pubkey = get_x_pubkey(0, wallet2)
-#create_multisig_addr(0, partner_x_pubkey)
-#backupContract(contracts[0])
-
 #(c,i) -- c is whether I want change address. i is index of address -- often 0,0
-#xp = keystore.Xpub()
-#xp.xpub = getmpk()
-#xp.get_xpubkey(0,0)
-#network = Network(None)
-#c = commands.Commands(None, wallet, network)
-#network.start()
-#print(wal.get_balance())
-#print(c.getaddressbalance(ai.to_ui_string()))
