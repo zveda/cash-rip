@@ -423,14 +423,15 @@ def main():
 	#if args.contractnick:
 	#	wallet, contract = genContractWallet(args.contractnick)
 	#	idx = contracts.index(contract)	
+	sys.stderr = open('/dev/null', 'w')
 	f = open('/dev/null', 'w')	
 
 	if args.command == 'listcontracts':
-		with redirect_stderr(f):
-			network = Network(None)
-			network.start()
-			standard, multi = getContractWalletBalances(network)
-			network.stop()
+	#with redirect_stderr(f):
+		network = Network(None)
+		network.start()
+		standard, multi = getContractWalletBalances(network)
+		network.stop()
 		#print(multi)
 		#print(standard, multi)
 		for i,c in enumerate(contracts):
@@ -440,8 +441,8 @@ def main():
 			else:
 				print("Contract index: {}\t No multisig address generated yet.".format(i)) 
 	elif args.command == 'gencontract':
-		with redirect_stderr(f):
-			wallet, contract = genContractWallet()
+	#with redirect_stderr(f):
+		wallet, contract = genContractWallet()
 		print("Give this x_pubkey to the other party:\n {}".format(contract['my_x_pubkey']))
 
 	elif args.command == 'delcontract':
@@ -455,18 +456,19 @@ def main():
 		print("You can now send funds to the multisig address {} This will tear your bitcoin cash in half.".format(contract["address"]))
 
 	elif args.command == 'checkaddress':
-		with redirect_stderr(f):
-			contract = create_multisig_addr(args.contractindex, args.x_pubkey, False)	
+#	with redirect_stderr(f):
+		contract = create_multisig_addr(args.contractindex, args.x_pubkey, False)	
 		if contract["address"].to_ui_string() == args.address:
 			print("Success. You and your partner generated the same address. You can now send funds to {}".format(args.address))
 		else:
 			print("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
 
 	elif args.command == 'requestrelease':
-		with redirect_stderr(f):
-			network = Network(None)
-			network.start()
-			tx = maketx_from_multisig(args.contractindex, Address.from_string(args.to_address), network)
+	#with redirect_stderr(f):
+		network = Network(None)
+		network.start()
+		tx = maketx_from_multisig(args.contractindex, Address.from_string(args.to_address), network)
+
 		print("Send this transaction hex to your partner. He needs it to release your funds:")
 		print(tx['hex'])
 
