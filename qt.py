@@ -71,8 +71,8 @@ class cashrip(QWidget):
         self.table = QTableWidget()
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.itemClicked.connect(self.table_click)
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(("Address;Confirmed;Unconfirmed").split(";"))
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(("Address;Confirmed;Unconfirmed;x_pubkey").split(";"))
         #self.table.horizontalHeaderItem().setTextAlignment(Qt.AlignHCenter)
         self.updateTable()
         self.tableUpdater = threading.Thread(target=self.updateTableLoop)
@@ -132,15 +132,19 @@ class cashrip(QWidget):
                 addr = c['address'].to_ui_string()
                 item1 = QTableWidgetItem(addr)
                 item2 = QTableWidgetItem(str(multi[addr][0]/COIN))
-                item3 =  QTableWidgetItem(str(multi[addr][1]/COIN))
+                item3 = QTableWidgetItem(str(multi[addr][1]/COIN))
+                
                 #self.table.setItem(i, 0, QTableWidgetItem("Contract {}".format(i)))
                 self.table.setItem(i, 0, item1)
                 self.table.setItem(i, 1, item2)
                 self.table.setItem(i, 2, item3)
             else:
                 item = QTableWidgetItem("Wait for partner to send address.")
-                self.table.setItem(i, 0, item)     
-       
+                self.table.setItem(i, 0, item)  
+   
+            item4 = QTableWidgetItem(c["my_x_pubkey"])
+            self.table.setItem(i, 3, item4)
+
     @pyqtSlot()
     def invite(self):
         wallet, contract = cash_rip.genContractWallet()
