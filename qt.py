@@ -73,6 +73,7 @@ class cashrip(QWidget):
         self.table.itemClicked.connect(self.table_click)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(("Address;Confirmed;Unconfirmed;x_pubkey").split(";"))
+        self.table.setColumnWidth(3,230)
         #self.table.horizontalHeaderItem().setTextAlignment(Qt.AlignHCenter)
         self.updateTable()
         self.tableUpdater = threading.Thread(target=self.updateTableLoop)
