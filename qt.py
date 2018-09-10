@@ -80,11 +80,17 @@ class cashrip(QWidget):
         self.tableUpdater.start()
         #listWidget.currentItemChanged.connect(self.item_click)
         self.textArea = QLabel("Here is some text.")
-        self.textArea.setText('Contract information goes in the box below.')
+        self.textArea.setText('Please select the contract you wish to use above.\nContract information (x_pubkey or transaction hex) goes in the box below.')
         self.textBox = QPlainTextEdit(self)
         self.textBox.setPlainText('')
         #s = self.textBox.document().toPlainText()
         #print(s)
+        self.addressBoxArea = QHBoxLayout()
+        self.addressBox = QLineEdit(self)
+        self.addrLabel = QLabel("Address:")
+        self.addressBoxArea.addWidget(self.addrLabel)
+        self.addressBoxArea.addWidget(self.addressBox)
+        
 
         # Add box layout, add table to box layout and add box layout to widget
         self.layout = QVBoxLayout()
@@ -92,6 +98,7 @@ class cashrip(QWidget):
         #layout.addStretch(1)
         self.layout.addWidget(self.textArea)
         self.layout.addWidget(self.textBox) 
+        self.layout.addLayout(self.addressBoxArea)
         self.layout.addLayout(self.buttons)
         self.setLayout(self.layout) 
          
@@ -152,26 +159,52 @@ class cashrip(QWidget):
         self.textBox.setPlainText("Give this x_pubkey to the other party:\n{}".format(contract['my_x_pubkey']))
     
     def accInvite(self):
+        xpub = self.textBox.document().toPlainText()
+        if xpub[:2] != "ff" or len(xpub) < 100:
+            self.textBox.setPlainText("Please enter your partner's x_pubkey into this textbox before clicking AcceptInvite.")
+            return
         wallet, contract = cash_rip.genContractWallet()
-        contract = cash_rip.create_multisig_addr(len(contracts)-1, self.textBox.document().toPlainText())
+        contract = cash_rip.create_multisig_addr(len(contracts)-1, xpub)
         self.textBox.setPlainText("Your x_pubkey: {}\n Partner x_pubkey: {}\nYou can now send funds to the multisig address {}\nThis will tear your bitcoin cash in half.".format(contract["my_x_pubkey"], contract["partner_x_pubkey"], contract["address"]))
         self.updateTable()
 
     def checkAddress(self):
-        args = self.textBox.document().toPlainText().split()
-        contract = cash_rip.create_multisig_addr(self.table.currentRow(), args[1], False)
-        if contract["address"].to_ui_string() == args[0]:
-            self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(args[0]))
+        xpub = self.textBox.document().toPlainText()
+        if xpub[:2] != "ff" or len(xpub) < 100:
+            self.textBox.setPlainText("Please enter your partner's x_pubkey into this textbox before clicking CheckAddress.")
+            return
+        addr = self.addressBox.text()
+        try:
+            Address.from_string(addr)
+        except:
+            self.addressBox.setText("Please enter multisig address here before clicking CheckAddress.")
+            return
+        contract = cash_rip.create_multisig_addr(self.table.currentRow(), xpub, False)
+        if contract["address"].to_ui_string() == addr:
+            self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(addr))
         else:
             self.textBox.setPlainText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")        
         self.updateTable()
 
     def requestRelease(self):
-        tx = cash_rip.maketx_from_multisig(self.table.currentRow(), Address.from_string(self.textBox.document().toPlainText()), self.network)
-        self.textBox.setPlainText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
+        addr = self.addressBox.text()
+        try:
+            Address.from_string(addr)
+        except:
+            self.addressBox.setText("Please enter address here before clicking RequestRelease.")
+            return
+        tx = cash_rip.maketx_from_multisig(self.table.currentRow(), addr, self.network)
+        if tx:
+            self.textBox.setPlainText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
+        else:
+            self.textBox.setPlainText("Something didn't work. Perhaps the selected contract has no funds.")
 
     def release(self):
-        cash_rip.sign_broadcast_tx_from_partner(self.textBox.document().toPlainText(), self.table.currentRow(), self.network)
+        txhex = self.textBox.document().toPlainText()
+        if len(txhex) < 150:
+            self.textBox.setPlainText("Please enter the transaction hex into this box before hitting Release.")
+            return
+        cash_rip.sign_broadcast_tx_from_partner(txhex, self.table.currentRow(), self.network)
 
     def delContract(self):
         #print(self.table.currentRow())
