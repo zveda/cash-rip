@@ -16,24 +16,27 @@ from electroncash import Network
 from electroncash.bitcoin import COIN
 from electroncash.address import Address
 from electroncash.plugins import BasePlugin, hook
-from electroncash_gui.qt.util import EnterButton, Buttons, CloseButton, MessageBoxMixin, Buttons, MyTreeWidget
+from electroncash_gui.qt.util import EnterButton, Buttons, CloseButton, MessageBoxMixin, Buttons, MyTreeWidget, TaskThread
 #from electroncash_gui.qt.util import *
 from electroncash_gui.qt.util import OkButton, WindowModalDialog
 from electroncash.util import user_dir
 import electroncash.version
 
 
-from . import cashrip
+import cashrip
 
 #sys.stderr = open('/dev/null', 'w')
 
 contracts = cashrip.contracts
 
 class cashripQT(QWidget):
-    def __init__(self, window):
+
+    update_signal = pyqtSignal()
+
+    def __init__(self):
+    #def __init__(self, window):
         super().__init__()
-        self.window = window
-        self.config = window.config
+        #self.window = window
         self.title = 'CashRipQT'
         #self.left = 300
         #self.top = 300
@@ -41,6 +44,7 @@ class cashripQT(QWidget):
         #self.height = 480
         self.network = Network(None)
         self.network.start()
+        self.config = None
         self.initUI()
     
     def initUI(self):
@@ -88,14 +92,17 @@ class cashripQT(QWidget):
 
         self.table = cashRipList(self)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.itemClicked.connect(self.table_click)
+        #self.table.itemClicked.connect(self.table_click)
         #self.table.setColumnCount(4)
         #self.table.setHorizontalHeaderLabels(("Address;Confirmed;Unconfirmed;x_pubkey").split(";"))
         #self.table.setColumnWidth(3,230)
         #self.table.horizontalHeaderItem().setTextAlignment(Qt.AlignHCenter)
-        self.table.on_update()
-        self.tableUpdater = threading.Thread(target=self.updateTableLoop)
-        self.tableUpdater.daemon = True
+        self.table.update()
+        self.update_signal.connect(self.run_update)
+        #self.tableUpdater = threading.Thread(target=self.updateTableLoop)
+        #self.tableUpdater.daemon = True
+        self.tableUpdater = TaskThread(self)
+        self.tableUpdater.add(self.updateTableLoop)
         self.tableUpdater.start()
         #listWidget.currentItemChanged.connect(self.item_click)
         self.textArea = QLabel("Here is some text.")
@@ -143,7 +150,8 @@ class cashripQT(QWidget):
 
     def updateTableLoop(self):
         while True:
-            self.table.on_update()
+            #self.table.update()
+            self.update_signal.emit()
             time.sleep(10)
 
     def getCurrentContract(self):
@@ -153,11 +161,15 @@ class cashripQT(QWidget):
         else:
             self.textBox.setPlainText("Please select a contract above, or create a new one via Invite or Accept.")
             return None
+    
+    @pyqtSlot()
+    def run_update(self):
+        self.table.update()
 
     @pyqtSlot()
     def invite(self):
         wallet, contract = cashrip.genContractWallet()
-        self.table.on_update()
+        self.table.update()
         self.textBox.setPlainText("Give this x_pubkey to the other party:\n{}".format(contract['my_x_pubkey']))
     
     def accInvite(self):
@@ -169,7 +181,7 @@ class cashripQT(QWidget):
         try:
             contract = cashrip.create_multisig_addr(len(contracts)-1, xpub)
             self.textBox.setPlainText("Your x_pubkey: {}\n Partner x_pubkey: {}\nYou can now send funds to the multisig address {}\nThis will tear your bitcoin cash in half.".format(contract["my_x_pubkey"], contract["partner_x_pubkey"], contract["address"]))
-            self.table.on_update()
+            self.table.update()
         except:
             self.addressBox.setText("Something was wrong with the x_pubkey you pasted.")
 
@@ -191,7 +203,7 @@ class cashripQT(QWidget):
                 self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(addr))
             else:
                 self.textBox.setPlainText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")        
-            self.table.on_update()
+            self.table.update()
 
     def requestRelease(self):
         addr = self.addressBox.text()
@@ -226,33 +238,26 @@ class cashripQT(QWidget):
         print(currentContract)
         if currentContract != None:
             cashrip.delContract(currentContract)
-            self.table.on_update()
+            self.table.update()
 
 class cashRipList(MyTreeWidget):
+    filter_columns = [0, 2]
     def __init__(self, parent):
         self.columns = [ _("Contract #"), _("Address"), _("Confirmed"), _("Unconfirmed"), _("x_pubkey") ]
         MyTreeWidget.__init__(self, parent, self.create_menu, self.columns, 4)
-        #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSortingEnabled(False)
-        #self.setMinimumWidth(700)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setSortingEnabled(True)
+        self.setMinimumWidth(700)
+        self.itemSelectionChanged.connect(self.onItemSelectionChanged)
+
     def on_update(self):
         #print("Updating tables")
         standard, multi = cashrip.getContractWalletBalances(self.parent.network)
         item = self.currentItem()
         current_id = int(item.text(0)) if item else None
-        #time.sleep(1)
-        #current_date = item.data(1, Qt.UserRole) if item else None
-        #if item:
-            #print("***************************************************************************************************************current id is {}".format(current_id))
-            #item.setSelected(False)
-        #self.setRowCount(len(contracts))
-        #labels = ''
-        #for i in range(len(contracts)):
-        #    labels = labels + 'Contract '+str(i)+';' 
-        #self.setVerticalHeaderLabels((labels).split(";"))
         
-        self.setCurrentItem(None)
-        time.sleep(0.1)
+        #self.setCurrentItem(None)
+        #time.sleep(0.1)
         self.clear()
         items = []
         for i,c in enumerate(contracts):
@@ -271,6 +276,9 @@ class cashRipList(MyTreeWidget):
                 #print("**************************************************************************************************************got here")
                 self.setCurrentItem(item)
     def create_menu(self, position):
+        pass
+    
+    def onItemSelectionChanged(self):
         pass
 
 class Plugin(BasePlugin):
@@ -322,8 +330,7 @@ class Plugin(BasePlugin):
     def requires_settings(self):
         return False
 
-
-#if __name__ == '__main__':
-#    app = QApplication(sys.argv)
-#    ex = cashripQT()
-#    sys.exit(app.exec_())
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = cashripQT()
+    sys.exit(app.exec_())
