@@ -20,14 +20,10 @@ from electroncash_gui.qt.util import EnterButton, Buttons, CloseButton, MessageB
 #from electroncash_gui.qt.util import *
 from electroncash_gui.qt.util import OkButton, WindowModalDialog
 from electroncash.util import user_dir
-import electroncash.version
-
-
+import electroncash.version, os
 from . import cashrip
 
 #sys.stderr = open('/dev/null', 'w')
-
-contracts = cashrip.contracts
 
 class cashripQT(QWidget):
 
@@ -46,6 +42,12 @@ class cashripQT(QWidget):
         #self.network = Network(None)
         #self.network.start()
         self.network = self.window.network
+        cashrip.topDir = window.get_wallet_folder()+'/cash_rip_data'
+        if not os.path.isdir(cashrip.topDir):
+            os.mkdir(cashrip.topDir)
+        cashrip.contracts = cashrip.loadContracts()
+        self.contracts = cashrip.contracts
+        #print(len(self.contracts))
         self.initUI()
     
     def initUI(self):
@@ -180,7 +182,7 @@ class cashripQT(QWidget):
             return
         wallet, contract = cashrip.genContractWallet()
         try:
-            contract = cashrip.create_multisig_addr(len(contracts)-1, xpub)
+            contract = cashrip.create_multisig_addr(len(self.contracts)-1, xpub)
             self.textBox.setPlainText("Your x_pubkey: {}\n Partner x_pubkey: {}\nYou can now send funds to the multisig address {}\nThis will tear your bitcoin cash in half.".format(contract["my_x_pubkey"], contract["partner_x_pubkey"], contract["address"]))
             self.table.update()
         except:
@@ -261,7 +263,7 @@ class cashRipList(MyTreeWidget):
         #time.sleep(0.1)
         self.clear()
         items = []
-        for i,c in enumerate(contracts):
+        for i,c in enumerate(self.parent.contracts):
             if "address" in c:
                 addr = c['address'].to_ui_string()
                 values = [str(i), addr, str(multi[addr][0]/COIN), str(multi[addr][1]/COIN), c["my_x_pubkey"]]

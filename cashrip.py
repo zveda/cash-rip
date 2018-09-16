@@ -37,10 +37,11 @@ import sys, copy, os
 #f = open('/dev/null', 'w')
 #sys.stderr = f
 
+topDir = '.'
 
 def genContractWallet(nickname=None):
-    if not os.path.isdir('./wallets'):
-        os.mkdir('./wallets')
+    if not os.path.isdir(topDir +'/wallets'):
+        os.mkdir(topDir+'/wallets')
     if nickname:
         for i,c in enumerate(contracts):
             if c["nickname"] == nickname:
@@ -49,14 +50,14 @@ def genContractWallet(nickname=None):
     #print(type(contracts))
     #this next loop generates a wallet name that isn't in use yet. 
     if contracts == []:
-        walletFile = './wallets/contract0.wallet'
+        walletFile = topDir +'/wallets/contract0.wallet'
     else: 
         walletNames = []
         for c in contracts:
             #print(c)
             walletNames.append(c['walletFile'])
         for i in range(len(walletNames)+1):
-            walletFile = './wallets/contract'+str(i)+'.wallet'
+            walletFile = topDir +'/wallets/contract'+str(i)+'.wallet'
             if walletFile not in walletNames:
                 break
     storage = WalletStorage(walletFile)
@@ -102,7 +103,7 @@ def updateContracts():
             c["address"] = c["address"].to_ui_string()
             c["partner_addr"] = c["partner_addr"].to_ui_string()
             
-    f = open('./contracts.txt', 'w')
+    f = open(topDir +'/contracts.txt', 'w')
     f.write(json_encode(contracts2))
     f.close()
 
@@ -112,13 +113,13 @@ def backupContract(c):
     if "address" in c2:
         c2["address"] = c2["address"].to_ui_string()
         c2["partner_addr"] = c2["partner_addr"].to_ui_string()
-    f = open('./contracts-bkp.txt', 'a')
+    f = open(topDir +'/contracts-bkp.txt', 'a')
     f.write(json_encode(c2))
     f.close()    
 
 def loadContracts():
     try:
-        f = open('./contracts.txt', 'r')
+        f = open(topDir +'/contracts.txt', 'r')
     except:
         print('No contracts found.')
         return []
@@ -187,7 +188,7 @@ def get_x_pubkey(addr_index, wallet):
 def testImportedAddrWallet(addrStr):
     network = Network(None)
     network.start()
-    storage = WalletStorage('./wallets/test.wallet')
+    storage = WalletStorage(topDir +'/wallets/test.wallet')
     wal = ImportedAddressWallet.from_text(storage, addrStr)
     print(wal)
     wal.start_threads(network)
@@ -203,7 +204,6 @@ def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
     wallet = getContractWallet(idx)
     c = commands.Commands(None, wallet, None)
     contract = contracts[idx]
-
 
     if 'address' in contract:
         print_msg("**********************************Overwriting old contract. It will be saved in contracts-bkp.txt")
@@ -374,7 +374,7 @@ def test3():
 def testImportedAddrWallet(addrStr):
     network = Network(None)
     network.start()
-    storage = WalletStorage('./wallets/test.wallet')
+    storage = WalletStorage(topDir +'/wallets/test.wallet')
     wal = ImportedAddressWallet.from_text(storage, addrStr)
     print(wal)
     wal.start_threads(network)
