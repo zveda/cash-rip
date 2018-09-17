@@ -23,7 +23,7 @@ from electroncash.util import user_dir
 import electroncash.version, os
 import cashrip
 
-sys.stderr = open('/dev/null', 'w')
+#sys.stderr = open('/dev/null', 'w')
 
 class cashripQT(QWidget):
 
@@ -32,14 +32,10 @@ class cashripQT(QWidget):
     def __init__(self):
         super().__init__()
         #self.window = window
+        self.config = None
         self.title = 'CashRipQT'
-        #self.left = 300
-        #self.top = 300
-        #self.width = 640
-        #self.height = 480
         self.network = Network(None)
         self.network.start()
-        self.config = None
         cashrip.topDir = './cash_rip_data'
         if not os.path.isdir(cashrip.topDir):
             os.mkdir(cashrip.topDir)
@@ -50,43 +46,43 @@ class cashripQT(QWidget):
     
     def initUI(self):
         QToolTip.setFont(QFont('SansSerif', 10))
-        self.setToolTip('This is a <b>QWidget</b> widget')
+        #self.setToolTip('This is a <b>QWidget</b> widget')
         self.buttons = QHBoxLayout()
 
         btn1 = QPushButton('Invite', self)
-        btn1.setToolTip('This is a <b>InitiateContract</b> widget')
+        #btn1.setToolTip('This is a <b>InitiateContract</b> widget')
         btn1.resize(btn1.sizeHint())
         btn1.clicked.connect(self.invite)
         self.buttons.addWidget(btn1)
         
             #btn.move(50, 50)
         btn2 = QPushButton('AcceptInvite', self)
-        btn2.setToolTip('This is a <b>InitiateContract</b> widget')
+        #btn2.setToolTip('This is a <b>InitiateContract</b> widget')
         btn2.resize(btn2.sizeHint())
         btn2.clicked.connect(self.accInvite)
         self.buttons.addWidget(btn2)
 
         btn3 = QPushButton('CheckAddress', self)
-        btn3.setToolTip('This is a <b>InitiateContract</b> widget')
+        #btn3.setToolTip('This is a <b>InitiateContract</b> widget')
         btn3.resize(btn3.sizeHint())
         btn3.clicked.connect(self.checkAddress)
         self.buttons.addWidget(btn3)
 
         btn4 = QPushButton('RequestRelease', self)
-        btn4.setToolTip('This is a <b>InitiateContract</b> widget')
+        #btn4.setToolTip('This is a <b>InitiateContract</b> widget')
         btn4.resize(btn4.sizeHint())
         btn4.clicked.connect(self.requestRelease)
         self.buttons.addWidget(btn4)
 
 
         btn5 = QPushButton('Release', self)
-        btn5.setToolTip('This is a <b>InitiateContract</b> widget')
+        #btn5.setToolTip('This is a <b>InitiateContract</b> widget')
         btn5.resize(btn5.sizeHint())
         btn5.clicked.connect(self.release)
         self.buttons.addWidget(btn5)
 
         btn6 = QPushButton('Delete Contract', self)
-        btn6.setToolTip('This is a <b>InitiateContract</b> widget')
+        #btn6.setToolTip('This is a <b>InitiateContract</b> widget')
         btn6.resize(btn6.sizeHint())
         btn6.clicked.connect(self.delContract)
         self.buttons.addWidget(btn6)
@@ -167,7 +163,6 @@ class cashripQT(QWidget):
     def run_update(self):
         self.table.update()
 
-    @pyqtSlot()
     def invite(self):
         wallet, contract = cashrip.genContractWallet()
         self.table.update()
@@ -242,14 +237,25 @@ class cashripQT(QWidget):
             self.table.update()
 
 class cashRipList(MyTreeWidget):
-    filter_columns = [0, 2]
+    #filter_columns = [0, 2]
     def __init__(self, parent):
-        self.columns = [ _("Contract #"), _("Address"), _("Confirmed"), _("Unconfirmed"), _("x_pubkey") ]
-        MyTreeWidget.__init__(self, parent, self.create_menu, self.columns, 4)
+        self.columns = [ _("Index"), _("Label"),_("Address"), _("Confirmed"), _("Unconfirmed"), _("x_pubkey") ]
+        MyTreeWidget.__init__(self, parent, self.create_menu, self.columns, 5, [1])
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
-        self.setMinimumWidth(700)
-        self.itemSelectionChanged.connect(self.onItemSelectionChanged)
+        #self.setColumnWidth(1,5000)
+        #self.itemSelectionChanged.connect(self.onItemSelectionChanged)
+
+    def on_edited(self, item, column, prior):
+        label = item.text(1)
+        if len(label) > 40:
+            label = label[:50]
+        for c in self.parent.contracts:
+            if c["my_x_pubkey"] == item.text(5):
+                c["label"] = label
+                cashrip.updateContracts()
+                self.update()
+                return
 
     def on_update(self):
         #print("Updating tables")
@@ -264,23 +270,22 @@ class cashRipList(MyTreeWidget):
         for i,c in enumerate(self.parent.contracts):
             if "address" in c:
                 addr = c['address'].to_ui_string()
-                values = [str(i), addr, str(multi[addr][0]/COIN), str(multi[addr][1]/COIN), c["my_x_pubkey"]]
+                values = [str(i), c["label"], addr, str(multi[addr][0]/COIN), str(multi[addr][1]/COIN), c["my_x_pubkey"]]
                 item = QTreeWidgetItem(values)
                 #self.setItem(i, 0, QTableWidgetItem("Contract {}".format(i)))
                 self.addTopLevelItem(item)
                 #self.setItem(i, 1, item2)
                 #self.setItem(i, 2, item3)
             else:
-                item = QTreeWidgetItem([str(i), "Wait for partner to send address.", None, None, c["my_x_pubkey"]])
+                item = QTreeWidgetItem([str(i), c["label"], "Wait for partner to send address.", None, None, c["my_x_pubkey"]])
                 self.addTopLevelItem(item)
             if i == current_id:
-                #print("**************************************************************************************************************got here")
                 self.setCurrentItem(item)
     def create_menu(self, position):
         pass
     
-    def onItemSelectionChanged(self):
-        pass
+    #def onItemSelectionChanged(self):
+    #    pass
 
 class Plugin(BasePlugin):
 
