@@ -40,8 +40,9 @@ import sys, copy, os
 topDir = '.'
 
 def genContractWallet(nickname=None):
-    if not os.path.isdir(topDir +'/wallets'):
-        os.mkdir(topDir+'/wallets')
+    path = os.path.join(topDir, 'wallets')
+    if not os.path.isdir(path):
+        os.mkdir(path)
     if nickname:
         for i,c in enumerate(contracts):
             if c["nickname"] == nickname:
@@ -50,14 +51,14 @@ def genContractWallet(nickname=None):
     #print(type(contracts))
     #this next loop generates a wallet name that isn't in use yet. 
     if contracts == []:
-        walletFile = topDir +'/wallets/contract0.wallet'
+        walletFile = os.path.join(topDir, 'wallets', 'contract0.wallet')
     else: 
         walletNames = []
         for c in contracts:
             #print(c)
             walletNames.append(c['walletFile'])
         for i in range(len(walletNames)+1):
-            walletFile = topDir +'/wallets/contract'+str(i)+'.wallet'
+            walletFile = os.path.join(topDir, 'wallets', 'contract'+str(i)+'.wallet')
             if walletFile not in walletNames:
                 break
     storage = WalletStorage(walletFile)
@@ -80,7 +81,7 @@ def genContractWallet(nickname=None):
 #my_addr_index is always going to be 0 if the wallet is unused, so maybe previous line unnecessary
     my_pubkey = wallet.derive_pubkeys(False, my_addr_index)
     my_x_pubkey = get_x_pubkey(my_addr_index, wallet)
-    contracts.append({'walletFile': wallet.storage.path, "my_addr": my_addr, "my_pubkey": my_pubkey, "my_x_pubkey": my_x_pubkey, "nickname": nickname})
+    contracts.append({'walletFile': wallet.storage.path, "my_addr": my_addr, "my_pubkey": my_pubkey, "my_x_pubkey": my_x_pubkey, "nickname": nickname, "label": ""})
     #print(contracts)
     updateContracts()
     return wallet, contracts[-1]
@@ -102,8 +103,8 @@ def updateContracts():
         if "address" in c:
             c["address"] = c["address"].to_ui_string()
             c["partner_addr"] = c["partner_addr"].to_ui_string()
-            
-    f = open(topDir +'/contracts.txt', 'w')
+    path = os.path.join(topDir, 'contracts.txt')        
+    f = open(path, 'w')
     f.write(json_encode(contracts2))
     f.close()
 
@@ -113,13 +114,15 @@ def backupContract(c):
     if "address" in c2:
         c2["address"] = c2["address"].to_ui_string()
         c2["partner_addr"] = c2["partner_addr"].to_ui_string()
-    f = open(topDir +'/contracts-bkp.txt', 'a')
+    path = os.path.join(topDir, 'contracts-bkp.txt')
+    f = open(path, 'a')
     f.write(json_encode(c2))
     f.close()    
 
 def loadContracts():
     try:
-        f = open(topDir +'/contracts.txt', 'r')
+        path = os.path.join(topDir, 'contracts.txt')
+        f = open(path, 'r')
     except:
         print('No contracts found.')
         return []
@@ -188,6 +191,7 @@ def get_x_pubkey(addr_index, wallet):
 def testImportedAddrWallet(addrStr):
     network = Network(None)
     network.start()
+    
     storage = WalletStorage(topDir +'/wallets/test.wallet')
     wal = ImportedAddressWallet.from_text(storage, addrStr)
     print(wal)
@@ -374,7 +378,8 @@ def test3():
 def testImportedAddrWallet(addrStr):
     network = Network(None)
     network.start()
-    storage = WalletStorage(topDir +'/wallets/test.wallet')
+    path = os.path.join(topDir, 'wallets', 'test.wallet')
+    storage = WalletStorage(path)
     wal = ImportedAddressWallet.from_text(storage, addrStr)
     print(wal)
     wal.start_threads(network)
