@@ -12,8 +12,8 @@ Drag and drop cashRip.zip into the 'installed plugins' manager in electron-cash 
 
 # Usage
 
-1. The buyer clicks invite, which creates a contract in his app and gives him an x_pubkey which he shares with the merchant.
+1. The buyer clicks Invite, which creates a contract in his app and gives him an x_pubkey which he shares with the merchant.
 2. The merchant clicks AcceptInvite, with the x_pubkey from the buyer as argument. This generates his own contract and a bitcoincash multisig address. He shares this address plus his resulting x_pubkey with the buyer.
 3. The buyer then clicks CheckAddress, using the address and x_pubkey from the merchant, as well as selecting his original contract that he created. If this results in success, he can now send the BCH to the address, splitting control over the funds between him and the merchant.
-4. When the merchant sees the funds have arrived (a few seconds), he sends out the item to the buyer. He now clicks RequestRelease, selecting the relevant contract and also entering a BCH address to which he would like the funds released into his control. He shares the resulting hex code with the buyer.
-5. When the buyer receives the item from the merchant and he is happy with it, he clicks Release, giving as input the hex code he got from the merchant, as well as selecting the relevant contract.
+4. When the merchant sees the funds have arrived (a few seconds), he sends out the item he is selling to the buyer. He now clicks RequestRelease, selecting the relevant contract and also entering a BCH address to which he would like the funds released into his control. He shares the resulting hex code with the buyer.
+5. When the buyer receives the ordered item from the merchant and he is happy with it, he clicks Release, giving as input the hex code he got from the merchant, as well as selecting the relevant contract.
