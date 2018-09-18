@@ -8,7 +8,7 @@ multi-signature addresses and Bitcoin Cash payments.
 
 # Installation
 
-Drag and drop cashRip.zip into the 'installed plugins' manager in electron-cash version 3.3.1 and above.
+Drag and drop cashRip.zip into Tools->Installed_Plugins manager in electron-cash version 3.3.1 and above.
 
 # Usage
 
