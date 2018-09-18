@@ -296,7 +296,7 @@ def maketx_from_multisig(idx, to_addr, network):
                     "value": total_balance-500, 
                     "prevout_n": 0}]
     tx = {"version":1, "lockTime":0, "outputs": outp, "inputs": inp}
-    print(tx)
+    #print(tx)
     txS = c.serialize(tx)
     fee = get_tx_size(txS)*2    # we multiply the size by 2 because we are not sure how much bigger the partner's signature will make the transaction. But it should not double it in size. Fee should be less than 2 satoshis/byte.
     tx["outputs"][0]["value"] = int(total_balance-fee)     
@@ -314,9 +314,13 @@ def sign_broadcast_tx_from_partner(tx, my_wallet_index, network):
     c = commands.Commands(None, wallet1, network)
     txSigned = c.signtransaction(tx)
     #print_msg("size is: %s" % get_tx_size(txSigned))
-    #print(c.deserialize(txSigned))
+    tx = c.deserialize(txSigned)
+    for i in tx['inputs']:
+        if None in i['signatures']:
+            return False
     c.broadcast(txSigned)
     print("Transaction of size {} bytes has been broadcast.".format(get_tx_size(txSigned)))
+    return True
 
 def test():
     stor = WalletStorage('/home/ilia/.electron-cash/wallets/default_wallet')

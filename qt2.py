@@ -23,7 +23,7 @@ from electroncash.util import user_dir
 import electroncash.version, os
 import cashrip
 
-#sys.stderr = open('/dev/null', 'w')
+sys.stderr = open('/dev/null', 'w')
 
 class cashripQT(QWidget):
 
@@ -164,7 +164,11 @@ class cashripQT(QWidget):
         self.table.update()
 
     def invite(self):
+        #TODO:
+        #self.textBox.setPlainText("Please wait . . .")
         wallet, contract = cashrip.genContractWallet()
+        contract["label"] = "buyer"
+        cashrip.updateContracts()
         self.table.update()
         self.textBox.setPlainText("Give this x_pubkey to the other party:\n{}".format(contract['my_x_pubkey']))
     
@@ -173,13 +177,18 @@ class cashripQT(QWidget):
         if xpub[:2] != "ff" or len(xpub) < 100:
             self.textBox.setPlainText("Please enter your partner's x_pubkey into this textbox before clicking AcceptInvite.")
             return
+        self.textBox.setPlainText("Please wait . . .")
         wallet, contract = cashrip.genContractWallet()
+        contract["label"] = "merchant"
+        cashrip.updateContracts()
         try:
             contract = cashrip.create_multisig_addr(len(self.contracts)-1, xpub)
             self.textBox.setPlainText("Your x_pubkey: {}\n Partner x_pubkey: {}\nYou can now send funds to the multisig address {}\nThis will tear your bitcoin cash in half.".format(contract["my_x_pubkey"], contract["partner_x_pubkey"], contract["address"]))
             self.table.update()
         except:
-            self.addressBox.setText("Something was wrong with the x_pubkey you pasted.")
+            self.textBox.setPlainText("Something was wrong with the x_pubkey you pasted.")
+            cashrip.delContract(len(self.contracts)-1)
+            self.table.update()
 
     def checkAddress(self):
         xpub = self.textBox.document().toPlainText()
@@ -194,11 +203,30 @@ class cashripQT(QWidget):
             return
         currentContract = self.getCurrentContract()
         if currentContract != None:
-            contract = cashrip.create_multisig_addr(currentContract, xpub, False)
+            if "address" in self.contracts[currentContract]:
+                self.textBox.setPlainText("This contract already has an address.")
+                return
+            if self.contracts[currentContract]["my_x_pubkey"] == xpub:
+                self.textBox.setPlainText("You entered your own x_pubkey, not your partner's.")
+                return   
+            try: 
+                contract = cashrip.create_multisig_addr(currentContract, xpub, False)
+            except:
+                self.textBox.setPlainText("Something was wrong with the x_pubkey you pasted.")
+                return
             if contract["address"].to_ui_string() == addr:
                 self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(addr))
             else:
-                self.textBox.setPlainText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")        
+                self.textBox.setPlainText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
+                os.remove(contract['addrWalletFile']) 
+                del contract["addrWalletFile"]
+                del contract["address"]
+                del contract["partner_addr"]
+                del contract["partner_x_pubkey"]
+                del contract["partner_pubkey"]
+                del contract["gen_by_me"]   
+                del contract["redeemScript"]    
+                cashrip.updateContracts()
             self.table.update()
 
     def requestRelease(self):
@@ -224,8 +252,11 @@ class cashripQT(QWidget):
         currentContract = self.getCurrentContract()
         if currentContract != None:
             try:
-                cashrip.sign_broadcast_tx_from_partner(txhex, currentContract, self.network)
-                self.textBox.setPlainText("Transaction was broadcast to the network.")
+                sent = cashrip.sign_broadcast_tx_from_partner(txhex, currentContract, self.network)
+                if sent:
+                    self.textBox.setPlainText("Transaction was broadcast to the network.")
+                else:
+                    self.textBox.setPlainText("Transaction was not broadcast. Either you selected the wrong contract or the transaction hex did not contain a valid signature.")
             except:
                 self.addressBox.setText("Something went wrong. Maybe the hex value was invalid.")            
 
