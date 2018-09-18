@@ -50,33 +50,33 @@ class cashripQT(QWidget):
         self.buttons = QHBoxLayout()
 
         btn1 = QPushButton('Invite', self)
-        #btn1.setToolTip('This is a <b>InitiateContract</b> widget')
+        btn1.setToolTip('Creates a new contract.')
         btn1.resize(btn1.sizeHint())
         btn1.clicked.connect(self.invite)
         self.buttons.addWidget(btn1)
         
             #btn.move(50, 50)
         btn2 = QPushButton('AcceptInvite', self)
-        #btn2.setToolTip('This is a <b>InitiateContract</b> widget')
+        btn2.setToolTip('Takes partner\'s x_pubkey as input.')
         btn2.resize(btn2.sizeHint())
         btn2.clicked.connect(self.accInvite)
         self.buttons.addWidget(btn2)
 
         btn3 = QPushButton('CheckAddress', self)
-        #btn3.setToolTip('This is a <b>InitiateContract</b> widget')
+        btn3.setToolTip('Takes as input your partner\'s address and x_pubkey, as well as your relevant contract.')
         btn3.resize(btn3.sizeHint())
         btn3.clicked.connect(self.checkAddress)
         self.buttons.addWidget(btn3)
 
         btn4 = QPushButton('RequestRelease', self)
-        #btn4.setToolTip('This is a <b>InitiateContract</b> widget')
+        btn4.setToolTip('Takes as input your contract and a release address as input.')
         btn4.resize(btn4.sizeHint())
         btn4.clicked.connect(self.requestRelease)
         self.buttons.addWidget(btn4)
 
 
         btn5 = QPushButton('Release', self)
-        #btn5.setToolTip('This is a <b>InitiateContract</b> widget')
+        btn5.setToolTip('Takes transaction hex code sent by your partner, as well as your relevant contract.')
         btn5.resize(btn5.sizeHint())
         btn5.clicked.connect(self.release)
         self.buttons.addWidget(btn5)
