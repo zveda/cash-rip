@@ -57,32 +57,32 @@ class cashripQT(QWidget):
         
             #btn.move(50, 50)
         btn2 = QPushButton('AcceptInvite', self)
-        btn2.setToolTip('Takes partner\'s x_pubkey as input.')
+        btn2.setToolTip('Input: partner\'s <b>x_pubkey</b>.')
         btn2.resize(btn2.sizeHint())
         btn2.clicked.connect(self.accInvite)
         self.buttons.addWidget(btn2)
 
         btn3 = QPushButton('CheckAddress', self)
-        btn3.setToolTip('Takes as input your partner\'s address and x_pubkey, as well as your relevant contract.')
+        btn3.setToolTip('Input: your partner\'s generated multisig <b>address</b> and <b>x_pubkey</b>. Also select the <b>contract</b> you used to invite your partner.')
         btn3.resize(btn3.sizeHint())
         btn3.clicked.connect(self.checkAddress)
         self.buttons.addWidget(btn3)
 
         btn4 = QPushButton('RequestRelease', self)
-        btn4.setToolTip('Takes as input your contract and a release address as input.')
+        btn4.setToolTip('Input:  BCH <b>address</b> to which the funds will be released. Also select your <b>contract</b> that contains the funds to be released.')
         btn4.resize(btn4.sizeHint())
         btn4.clicked.connect(self.requestRelease)
         self.buttons.addWidget(btn4)
 
 
         btn5 = QPushButton('Release', self)
-        btn5.setToolTip('Takes transaction hex code sent by your partner, as well as your relevant contract.')
+        btn5.setToolTip('Input: <b>hex code</b> sent by your partner. Also select your <b>contract</b> that contains the funds to be released.')
         btn5.resize(btn5.sizeHint())
         btn5.clicked.connect(self.release)
         self.buttons.addWidget(btn5)
 
         btn6 = QPushButton('Delete Contract', self)
-        #btn6.setToolTip('This is a <b>InitiateContract</b> widget')
+        btn6.setToolTip('Delete selected <b>contract</b>. Do not delete any contract that still contains funds as you will then not be able to release those funds in the future.')
         btn6.resize(btn6.sizeHint())
         btn6.clicked.connect(self.delContract)
         self.buttons.addWidget(btn6)
