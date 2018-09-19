@@ -12,9 +12,7 @@ Drag and drop cashRip.zip into Tools->Installed_Plugins manager in electron-cash
 
 # Usage
 
-Short version: The buyer does Invite -> CheckAddress -> Send Funds -> Release in that order.
-
-The merchant does AcceptInvite -> Send Goods -> RequestRelease in that order.
+Short version: The buyer does Invite -> CheckAddress -> Send Funds -> Release in that order. The merchant does AcceptInvite -> Send Goods -> RequestRelease in that order.
 
 Long verson:
 
