@@ -164,8 +164,8 @@ class cashripQT(QWidget):
         self.table.update()
 
     def invite(self):
-        #TODO:
-        #self.textBox.setPlainText("Please wait . . .")
+        self.textBox.setPlainText("Please wait . . .")
+        self.textBox.repaint()
         wallet, contract = cashrip.genContractWallet()
         contract["label"] = "buyer"
         cashrip.updateContracts()
@@ -178,12 +178,13 @@ class cashripQT(QWidget):
             self.textBox.setPlainText("Please enter your partner's x_pubkey into this textbox before clicking AcceptInvite.")
             return
         self.textBox.setPlainText("Please wait . . .")
+        self.textBox.repaint()
         wallet, contract = cashrip.genContractWallet()
         contract["label"] = "merchant"
         cashrip.updateContracts()
         try:
             contract = cashrip.create_multisig_addr(len(self.contracts)-1, xpub)
-            self.textBox.setPlainText("Your x_pubkey: {}\n Partner x_pubkey: {}\nYou can now send funds to the multisig address {}\nThis will tear your bitcoin cash in half.".format(contract["my_x_pubkey"], contract["partner_x_pubkey"], contract["address"]))
+            self.textBox.setPlainText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
             self.table.update()
         except:
             self.textBox.setPlainText("Something was wrong with the x_pubkey you pasted.")
@@ -195,27 +196,29 @@ class cashripQT(QWidget):
         if xpub[:2] != "ff" or len(xpub) < 100:
             self.textBox.setPlainText("Please enter your partner's x_pubkey into this textbox before clicking CheckAddress.")
             return
-        addr = self.addressBox.text()
+        addrOrig = self.addressBox.text()
         try:
-            Address.from_string(addr)
+            addr = Address.from_string(addrOrig)
         except:
             self.addressBox.setText("Please enter multisig address here before clicking CheckAddress.")
             return
         currentContract = self.getCurrentContract()
         if currentContract != None:
             if "address" in self.contracts[currentContract]:
-                self.textBox.setPlainText("This contract already has an address.")
+                self.textBox.setPlainText("This contract already has an address. Maybe you selected the wrong contract?")
                 return
             if self.contracts[currentContract]["my_x_pubkey"] == xpub:
                 self.textBox.setPlainText("You entered your own x_pubkey, not your partner's.")
                 return   
             try: 
+                self.textBox.setPlainText("Please wait . . .")
+                self.textBox.repaint()
                 contract = cashrip.create_multisig_addr(currentContract, xpub, False)
             except:
                 self.textBox.setPlainText("Something was wrong with the x_pubkey you pasted.")
                 return
-            if contract["address"].to_ui_string() == addr:
-                self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(addr))
+            if contract["address"] == addr:
+                self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(addrOrig))
             else:
                 self.textBox.setPlainText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
                 os.remove(contract['addrWalletFile']) 
@@ -238,6 +241,8 @@ class cashripQT(QWidget):
             return
         currentContract = self.getCurrentContract()
         if currentContract != None:
+            self.textBox.setPlainText("Please wait . . .")
+            self.textBox.repaint()
             tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
             if tx:
                 self.textBox.setPlainText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
@@ -252,6 +257,8 @@ class cashripQT(QWidget):
         currentContract = self.getCurrentContract()
         if currentContract != None:
             try:
+                self.textBox.setPlainText("Please wait . . .")
+                self.textBox.repaint()
                 sent = cashrip.sign_broadcast_tx_from_partner(txhex, currentContract, self.network)
                 if sent:
                     self.textBox.setPlainText("Transaction was broadcast to the network.")
@@ -264,18 +271,44 @@ class cashripQT(QWidget):
         currentContract = self.getCurrentContract()
         #print(currentContract)
         if currentContract != None:
-            cashrip.delContract(currentContract)
-            self.table.update()
+            curItem = self.table.currentItem()
+            balC = curItem.text(3)
+            balU = curItem.text(4)
+            if curItem.text(2)[:4] != 'Wait' and (balC != "0.0" or balU != "0.0"):
+                buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}? It contains funds and you will be unable to release them in the future.".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            else:
+                buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if buttonReply == QMessageBox.Yes:
+                cashrip.delContract(currentContract)
+                self.table.update()
+            else:
+                return
+
 
 class cashRipList(MyTreeWidget):
     #filter_columns = [0, 2]
     def __init__(self, parent):
-        self.columns = [ _("Index"), _("Label"),_("Address"), _("Confirmed"), _("Unconfirmed"), _("x_pubkey") ]
+        self.columns = [ _("Index"), _("Label"),_("Address"), _("Confirmed"), _("Unconfirmed"), _("Your x_pubkey") ]
         MyTreeWidget.__init__(self, parent, self.create_menu, self.columns, 5, [1])
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
         #self.setColumnWidth(1,5000)
         #self.itemSelectionChanged.connect(self.onItemSelectionChanged)
+
+    def create_menu(self, position):
+        menu = QMenu()
+        selected = self.selectedItems()
+        names = [item.text(0) for item in selected]
+        keys = [item.text(1) for item in selected]
+        column = self.currentColumn()
+        column_title = self.headerItem().text(column)
+        column_data = '\n'.join([item.text(column) for item in selected])
+        menu.addAction(_("Copy {}").format(column_title), lambda: QApplication.clipboard().setText(column_data))
+        if column in self.editable_columns:
+            item = self.currentItem()
+            menu.addAction(_("Edit {}").format(column_title), lambda: self.editItem(item, column))
+        #run_hook('create_contact_menu', menu, selected)
+        menu.exec_(self.viewport().mapToGlobal(position))
 
     def on_edited(self, item, column, prior):
         label = item.text(1)
@@ -312,8 +345,6 @@ class cashRipList(MyTreeWidget):
                 self.addTopLevelItem(item)
             if i == current_id:
                 self.setCurrentItem(item)
-    def create_menu(self, position):
-        pass
     
     #def onItemSelectionChanged(self):
     #    pass
