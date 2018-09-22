@@ -243,11 +243,15 @@ class cashripQT(QWidget):
         if currentContract != None:
             self.textBox.setPlainText("Please wait . . .")
             self.textBox.repaint()
-            tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
-            if tx:
-                self.textBox.setPlainText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
-            else:
-                self.textBox.setPlainText("Something didn't work. Perhaps the selected contract has no funds.")
+            try:
+                tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
+            except Exception as e:
+                self.textBox.setPlainText(str(e))
+                return 
+            #if tx:
+            self.textBox.setPlainText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
+            #else:
+            #    self.textBox.setPlainText("Something didn't work. Perhaps the selected contract has no funds.")
 
     def release(self):
         txhex = self.textBox.document().toPlainText()
