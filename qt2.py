@@ -175,6 +175,7 @@ class cashripQT(QWidget):
     def accInvite(self):
         xpub = self.textBox.document().toPlainText()
         if xpub[:2] != "ff" or len(xpub) < 100:
+            #self.textBox.setStyleSheet("background-color: rgb(255, 0, 0);")
             self.textBox.setPlainText("Please enter your partner's x_pubkey into this textbox before clicking AcceptInvite.")
             return
         self.textBox.setPlainText("Please wait . . .")
@@ -201,6 +202,9 @@ class cashripQT(QWidget):
             addr = Address.from_string(addrOrig)
         except:
             self.addressBox.setText("Please enter multisig address here before clicking CheckAddress.")
+            return
+        if addr.kind != Address.ADDR_P2SH:
+            self.addressBox.setText("The address you entered was not a multisig address.")
             return
         currentContract = self.getCurrentContract()
         if currentContract != None:
@@ -272,6 +276,7 @@ class cashripQT(QWidget):
                 self.addressBox.setText("Something went wrong. Maybe the hex value was invalid.")            
 
     def delContract(self):
+        self.textBox.setPlainText('')
         currentContract = self.getCurrentContract()
         #print(currentContract)
         if currentContract != None:
