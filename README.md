@@ -1,5 +1,5 @@
 # cash-rip
-Implementation of cash rip for Bitcoin cash using multi signature addresses and the electroncash wallet.
+Implementation of cash rip for Bitcoin cash using multi signature addresses and the Electron Cash wallet.
 
 Conceptually, this mimics a real-world interaction where the buyer rips a cash note in half and gives the merchant one half.
 The two halves are useless, on their own, for both parties. After the buyer receives his item and he is happy, he can give his half to the 
@@ -8,7 +8,7 @@ multi-signature addresses and Bitcoin Cash payments.
 
 # Installation
 
-Drag and drop cashRip.zip into Tools->Installed_Plugins manager in electron-cash version 3.3.1 and above.
+Drag and drop cashRip.zip into Tools->Installed_Plugins manager in Electron Cash version 3.3.1 and above.
 
 # Usage
 
