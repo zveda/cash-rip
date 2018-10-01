@@ -406,7 +406,7 @@ class Plugin(BasePlugin):
         self.tab = cashripQT(window)
         #self.tab.set_coinshuffle_addrs()
         icon = QIcon(":icons/tab_coins.png")
-        description =  _("Splits control of funds between you and a partner.")
+        description =  _("Cash Rip")
         name = "Cash Rip"
         self.tab.tab_icon = icon
         self.tab.tab_description = description
