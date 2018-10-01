@@ -124,7 +124,7 @@ def loadContracts():
         path = os.path.join(topDir, 'contracts.txt')
         f = open(path, 'r')
     except:
-        print('No contracts found.')
+        #print('No contracts found.')
         return []
     contracts = json_decode(f.read())
     for c in contracts:
@@ -161,7 +161,7 @@ def getContractWalletBalances(network):
         wal = getContractWallet(i)
         wal.start_threads(network)
         wal.synchronize()
-        wal.wait_until_synchronized()
+        #wal.wait_until_synchronized()
         #c = commands.Commands(None, wal, network)
         #print(type(c.getbalance()))
         #print_msg("=======================wallet up to date: %s" % wal.is_up_to_date())
@@ -174,7 +174,7 @@ def getContractWalletBalances(network):
             wal2 = getAddressWallet(i)
             wal2.start_threads(network)
             wal2.synchronize()
-            wal2.wait_until_synchronized()
+            #wal2.wait_until_synchronized()
             balancesMulti[con['address'].to_ui_string()] = wal2.get_balance()
     return balancesStandard, balancesMulti
 
@@ -247,7 +247,7 @@ def maketx_from_multisig(idx, to_addr, network):
     #initial_params = {'num_sig': 2, 'sequence': 4294967294, 'signatures': [None, None], 'type': 'p2sh'}
     contract = contracts[idx]
     if "address" not in contract:
-        raise Exception("This contract does not have a multisig address yet. Generate one first.")
+        raise Exception("This contract does not have a multisig address yet.")
         #sys.exit()    
     wallet = getContractWallet(idx)
     walletAddr = getAddressWallet(idx)
@@ -261,7 +261,7 @@ def maketx_from_multisig(idx, to_addr, network):
     total_balance = sum(multis[address_str])
     print("********************************total balance: {}".format(total_balance))
     if total_balance == 0:
-        return False
+        raise Exception("This contract has no funds yet.")
     #hist = c.getaddresshistory(address_str) 
     utxos = walletAddr.get_utxos()
     #print("********************************hist is: {}".format(hist))

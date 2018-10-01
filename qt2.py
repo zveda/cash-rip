@@ -373,34 +373,44 @@ class Plugin(BasePlugin):
         BasePlugin.__init__(self, parent, config, name)
         self.window = None
         self.tab = None
+        self.config = config
+        #self.wallet_windows = {}
 
     @hook
     def init_qt(self, gui):
         for window in gui.windows:
-            self.on_new_window(window)
+            self.load_wallet(window.wallet, window)
 
     @hook
-    def on_new_window(self, window):
-        self.update(window)
-
-    @hook
-    def on_close_window(self, window):
+    def load_wallet(self, wallet, window):
+        """
+        Hook called when a wallet is loaded and a window opened for it.
+        """
+        # We get this multiple times.  Only handle it once, if unhandled.
+        if self.window:
+            return
         self.update(window)
 
     def on_close(self):
-        tabIndex= self.window.tabs.indexOf(self.tab)
+        """
+        BasePlugin callback called when the plugin is disabled among other things.
+        """
+        tabIndex = self.window.tabs.indexOf(self.tab)
         self.window.tabs.removeTab(tabIndex)
-
+        self.window = None
+        self.tab = None
+            
     def update(self, window):
+        #print("update {}".format(self.wallet_windows))
         self.window = window
         self.tab = cashripQT(window)
         #self.tab.set_coinshuffle_addrs()
         icon = QIcon(":icons/tab_coins.png")
-        description =  _("Cash Rip")
-        name = "rip"
+        description =  _("Splits control of funds between you and a partner.")
+        name = "Cash Rip"
         self.tab.tab_icon = icon
         self.tab.tab_description = description
-        self.tab.tab_pos = len(self.window.tabs)
+        #self.tab.tab_pos = len(self.window.tabs)
         self.tab.tab_name = name
         self.window.tabs.addTab(self.tab, icon, description.replace("&", ""))
 
