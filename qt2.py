@@ -40,8 +40,6 @@ class cashripQT(QWidget):
         if not os.path.isdir(cashrip.topDir):
             os.mkdir(cashrip.topDir)
         cashrip.contracts = cashrip.loadContracts()
-        self.contracts = cashrip.contracts
-        #print(len(self.contracts))
         self.initUI()
     
     def initUI(self):
@@ -55,7 +53,7 @@ class cashripQT(QWidget):
         btn1.clicked.connect(self.invite)
         self.buttons.addWidget(btn1)
         
-            #btn.move(50, 50)
+        #btn.move(50, 50)
         btn2 = QPushButton('AcceptInvite', self)
         btn2.setToolTip('Input: partner\'s <b>x_pubkey</b>.')
         btn2.resize(btn2.sizeHint())
@@ -98,6 +96,7 @@ class cashripQT(QWidget):
         self.update_signal.connect(self.run_update)
         #self.tableUpdater = threading.Thread(target=self.updateTableLoop)
         #self.tableUpdater.daemon = True
+        self.keepUpdating = True
         self.tableUpdater = TaskThread(self)
         self.tableUpdater.add(self.updateTableLoop)
         self.tableUpdater.start()
@@ -106,8 +105,7 @@ class cashripQT(QWidget):
         self.textArea.setText('Please select the contract you wish to use above.\nContract information (x_pubkey or transaction hex) goes in the box below.')
         self.textBox = QPlainTextEdit(self)
         self.textBox.setPlainText('')
-        #s = self.textBox.document().toPlainText()
-        #print(s)
+
         self.addressBoxArea = QHBoxLayout()
         self.addressBox = QLineEdit(self)
         self.addrLabel = QLabel("Address:")
@@ -146,10 +144,9 @@ class cashripQT(QWidget):
         #print(self.table.currentRow())
 
     def updateTableLoop(self):
-        while True:
-            #self.table.update()
-            self.update_signal.emit()
+        while self.keepUpdating:
             time.sleep(10)
+            self.update_signal.emit()
 
     def getCurrentContract(self):
         item = self.table.currentItem()
@@ -184,12 +181,12 @@ class cashripQT(QWidget):
         contract["label"] = "merchant"
         cashrip.updateContracts()
         try:
-            contract = cashrip.create_multisig_addr(len(self.contracts)-1, xpub)
+            contract = cashrip.create_multisig_addr(len(cashrip.contracts)-1, xpub)
             self.textBox.setPlainText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
             self.table.update()
         except:
             self.textBox.setPlainText("Something was wrong with the x_pubkey you pasted.")
-            cashrip.delContract(len(self.contracts)-1)
+            cashrip.delContract(len(cashrip.contracts)-1)
             self.table.update()
 
     def checkAddress(self):
@@ -208,10 +205,10 @@ class cashripQT(QWidget):
             return
         currentContract = self.getCurrentContract()
         if currentContract != None:
-            if "address" in self.contracts[currentContract]:
+            if "address" in cashrip.contracts[currentContract]:
                 self.textBox.setPlainText("This contract already has an address. Maybe you selected the wrong contract?")
                 return
-            if self.contracts[currentContract]["my_x_pubkey"] == xpub:
+            if cashrip.contracts[currentContract]["my_x_pubkey"] == xpub:
                 self.textBox.setPlainText("You entered your own x_pubkey, not your partner's.")
                 return   
             try: 
@@ -252,10 +249,7 @@ class cashripQT(QWidget):
             except Exception as e:
                 self.textBox.setPlainText(str(e))
                 return 
-            #if tx:
             self.textBox.setPlainText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
-            #else:
-            #    self.textBox.setPlainText("Something didn't work. Perhaps the selected contract has no funds.")
 
     def release(self):
         txhex = self.textBox.document().toPlainText()
@@ -323,7 +317,7 @@ class cashRipList(MyTreeWidget):
         label = item.text(1)
         if len(label) > 40:
             label = label[:50]
-        for c in self.parent.contracts:
+        for c in cashrip.contracts:
             if c["my_x_pubkey"] == item.text(5):
                 c["label"] = label
                 cashrip.updateContracts()
@@ -340,15 +334,12 @@ class cashRipList(MyTreeWidget):
         #time.sleep(0.1)
         self.clear()
         items = []
-        for i,c in enumerate(self.parent.contracts):
+        for i,c in enumerate(cashrip.contracts):
             if "address" in c:
                 addr = c['address'].to_ui_string()
                 values = [str(i), c["label"], addr, str(multi[addr][0]/COIN), str(multi[addr][1]/COIN), c["my_x_pubkey"]]
                 item = QTreeWidgetItem(values)
-                #self.setItem(i, 0, QTableWidgetItem("Contract {}".format(i)))
                 self.addTopLevelItem(item)
-                #self.setItem(i, 1, item2)
-                #self.setItem(i, 2, item3)
             else:
                 item = QTreeWidgetItem([str(i), c["label"], "Wait for partner to send address.", None, None, c["my_x_pubkey"]])
                 self.addTopLevelItem(item)
@@ -378,6 +369,7 @@ class Plugin(BasePlugin):
 
     @hook
     def init_qt(self, gui):
+        self.gui = gui
         for window in gui.windows:
             self.load_wallet(window.wallet, window)
 
@@ -387,9 +379,17 @@ class Plugin(BasePlugin):
         Hook called when a wallet is loaded and a window opened for it.
         """
         # We get this multiple times.  Only handle it once, if unhandled.
-        if self.window:
-            return
-        self.update(window)
+        if not self.window:
+            self.update(window)
+
+    @hook
+    def on_close_window(self, window):
+        if window == self.window and self.gui.windows:
+            self.window = None
+            self.tab.tableUpdater.stop()
+            self.tab.keepUpdating = False
+            self.tab = None
+            self.init_qt(self.gui)
 
     def on_close(self):
         """
@@ -398,6 +398,8 @@ class Plugin(BasePlugin):
         tabIndex = self.window.tabs.indexOf(self.tab)
         self.window.tabs.removeTab(tabIndex)
         self.window = None
+        self.tab.tableUpdater.stop()
+        self.tab.keepUpdating = False
         self.tab = None
             
     def update(self, window):
