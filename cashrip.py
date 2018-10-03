@@ -210,7 +210,7 @@ def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
     contract = contracts[idx]
 
     if 'address' in contract:
-        print_msg("**********************************Overwriting old contract. It will be saved in contracts-bkp.txt")
+        print_msg("Cash Rip**********************************Overwriting old contract. It will be saved in contracts-bkp.txt")
         backupContract(contract)
         
     (partner_pubkey, partner_address) = keystore.xpubkey_to_address(partner_x_pubkey)
@@ -259,7 +259,7 @@ def maketx_from_multisig(idx, to_addr, network):
     (standard, multis) = getContractWalletBalances(network)
     #print(multis)
     total_balance = sum(multis[address_str])
-    print("********************************total balance: {}".format(total_balance))
+    print("Cash Rip********************************total balance: {}".format(total_balance))
     if total_balance == 0:
         raise Exception("This contract has no funds yet.")
     #hist = c.getaddresshistory(address_str) 
@@ -301,7 +301,7 @@ def maketx_from_multisig(idx, to_addr, network):
     fee = get_tx_size(txS)*2    # we multiply the size by 2 because we are not sure how much bigger the partner's signature will make the transaction. But it should not double it in size. Fee should be less than 2 satoshis/byte.
     tx["outputs"][0]["value"] = int(total_balance-fee)     
     #print(tx["outputs"][0]["value"])
-    print("********************************tx fee will be {}".format(fee))
+    print("Cash Rip********************************tx fee will be {}".format(fee))
     txS = c.serialize(tx)
     #print (c.deserialize(txS))
     signedtx = c.signtransaction(txS)
@@ -319,7 +319,7 @@ def sign_broadcast_tx_from_partner(tx, my_wallet_index, network):
         if None in i['signatures']:
             return False
     c.broadcast(txSigned)
-    print("Transaction of size {} bytes has been broadcast.".format(get_tx_size(txSigned)))
+    print("Cash Rip********************************Transaction of size {} bytes has been broadcast.".format(get_tx_size(txSigned)))
     return True
 
 def test():

@@ -145,7 +145,7 @@ class cashripQT(QWidget):
 
     def updateTableLoop(self):
         while self.keepUpdating:
-            time.sleep(10)
+            time.sleep(6)
             self.update_signal.emit()
 
     def getCurrentContract(self):
@@ -362,14 +362,17 @@ class Plugin(BasePlugin):
 
     def __init__(self, parent, config, name):
         BasePlugin.__init__(self, parent, config, name)
-        self.window = None
-        self.tab = None
+        self.windows = []
+        self.tabs = []
         self.config = config
+        
         #self.wallet_windows = {}
 
     @hook
     def init_qt(self, gui):
-        self.gui = gui
+        # We get this multiple times.  Only handle it once, if unhandled.
+        if self.windows:
+            return
         for window in gui.windows:
             self.load_wallet(window.wallet, window)
 
@@ -378,43 +381,40 @@ class Plugin(BasePlugin):
         """
         Hook called when a wallet is loaded and a window opened for it.
         """
-        # We get this multiple times.  Only handle it once, if unhandled.
-        if not self.window:
-            self.update(window)
+        self.windows.append(window)
+        tab = cashripQT(window)
+        self.tabs.append(tab)
+        #self.tab.set_coinshuffle_addrs()
+        icon = QIcon(":icons/tab_coins.png")
+        description =  _("Cash Rip")
+        name = "Cash Rip"
+        tab.tab_icon = icon
+        tab.tab_description = description
+        #self.tab.tab_pos = len(self.window.tabs)
+        tab.tab_name = name
+        window.tabs.addTab(tab, icon, description.replace("&", ""))
 
     @hook
     def on_close_window(self, window):
-        if window == self.window and self.gui.windows:
-            self.window = None
-            self.tab.tableUpdater.stop()
-            self.tab.keepUpdating = False
-            self.tab = None
-            self.init_qt(self.gui)
+        idx = self.windows.index(window)
+        tab = self.tabs[idx]
+        del self.windows[idx]
+        tab.tableUpdater.stop()
+        tab.keepUpdating = False
+        del self.tabs[idx]
 
     def on_close(self):
         """
         BasePlugin callback called when the plugin is disabled among other things.
         """
-        tabIndex = self.window.tabs.indexOf(self.tab)
-        self.window.tabs.removeTab(tabIndex)
-        self.window = None
-        self.tab.tableUpdater.stop()
-        self.tab.keepUpdating = False
-        self.tab = None
+        for idx,w in enumerate(self.windows):
+            tab = self.tabs[idx]
+            tabIndex = w.tabs.indexOf(tab)
+            w.tabs.removeTab(tabIndex)
+            tab.tableUpdater.stop()
+            tab.keepUpdating = False
+        self.windows.clear()
+        self.tabs.clear()
             
-    def update(self, window):
-        #print("update {}".format(self.wallet_windows))
-        self.window = window
-        self.tab = cashripQT(window)
-        #self.tab.set_coinshuffle_addrs()
-        icon = QIcon(":icons/tab_coins.png")
-        description =  _("Cash Rip")
-        name = "Cash Rip"
-        self.tab.tab_icon = icon
-        self.tab.tab_description = description
-        #self.tab.tab_pos = len(self.window.tabs)
-        self.tab.tab_name = name
-        self.window.tabs.addTab(self.tab, icon, description.replace("&", ""))
-
     def requires_settings(self):
         return False
