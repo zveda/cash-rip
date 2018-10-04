@@ -20,6 +20,8 @@ Electron Cash plugins have almost complete control over any wallets that are ope
 
 As such, only run plugins you obtain from official sources and from developers that you trust.
 
+Also, feel free to audit the code yourself.
+
 # Installation
 
 Drag and drop cashRip.zip into Tools->Installed_Plugins manager in Electron Cash version 3.3.1 and above.
