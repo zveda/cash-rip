@@ -24,7 +24,7 @@ Also, feel free to audit the code yourself.
 
 # Installation
 
-Drag and drop cashRip.zip into Tools->Installed_Plugins manager in Electron Cash version 3.3.1 and above.
+In Electron Cash version 3.3.1 and above, go to Tools->Installed_Plugins, then Add Plugin and select cashRip.zip (no need for unzipping).
 
 # Usage
 
