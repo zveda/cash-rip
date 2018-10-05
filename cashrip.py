@@ -46,7 +46,7 @@ def genContractWallet(nickname=None):
     if nickname:
         for i,c in enumerate(contracts):
             if c["nickname"] == nickname:
-                print("{} contract exists.".format(nickname))
+                print_msg("{} contract exists.".format(nickname))
                 return getContractWallet(i), c
     #print(type(contracts))
     #this next loop generates a wallet name that isn't in use yet. 
@@ -84,12 +84,14 @@ def genContractWallet(nickname=None):
     contracts.append({'walletFile': wallet.storage.path, "my_addr": my_addr, "my_pubkey": my_pubkey, "my_x_pubkey": my_x_pubkey, "nickname": nickname, "label": ""})
     #print(contracts)
     updateContracts()
+    multiWallets.append(None)
     return wallet, contracts[-1]
 
 def delContract(idx):
     os.remove(contracts[idx]['walletFile'])
     if 'address' in contracts[idx]:
         os.remove(contracts[idx]['addrWalletFile'])
+    del multiWallets[idx]
     del contracts[idx]
     updateContracts()
 
@@ -140,8 +142,6 @@ def loadContracts():
     else:
         return contracts
 
-contracts = loadContracts()
-
 def getContractWallet(idx):
     storage = WalletStorage(contracts[idx]['walletFile'])
     if storage.file_exists():
@@ -149,10 +149,40 @@ def getContractWallet(idx):
         return wallet
 
 def getAddressWallet(idx):
-    storage = WalletStorage(contracts[idx]['addrWalletFile'])
-    if storage.file_exists():
-        wallet = Wallet(storage)
-        return wallet    
+    contract = contracts[idx]
+    if "address" in contract.keys():
+        storage = WalletStorage(contract['addrWalletFile'])
+        if storage.file_exists():
+            wallet = Wallet(storage)
+            return wallet
+    else:
+        return None   
+
+def getMultiWallets():
+    wallets = []
+    for i,con in enumerate(contracts):
+        wal = getAddressWallet(i)
+        wallets.append(wal)
+    return wallets
+
+def startSyncMultiWallet(idx, network):
+    wallet = multiWallets[idx]
+    wallet.start_threads(network)
+    wallet.synchronize()
+
+def startSyncWallets(wallets, network):
+    for wal in wallets:
+        if wal:
+            wal.start_threads(network)
+            wal.synchronize()       
+
+def getMultiBalances():
+    balances = {}
+    for i,wal in enumerate(multiWallets):
+        con = contracts[i]
+        if "address" in con.keys():
+            balances[con['address'].to_ui_string()] = wal.get_balance()
+    return balances
 
 def getContractWalletBalances(network):
     balancesStandard = {}
@@ -161,12 +191,14 @@ def getContractWalletBalances(network):
         wal = getContractWallet(i)
         wal.start_threads(network)
         wal.synchronize()
-        #wal.wait_until_synchronized()
+        wal.wait_until_synchronized()
+        balancesStandard[con['walletFile']] = wal.get_balance()
+        
         #c = commands.Commands(None, wal, network)
         #print(type(c.getbalance()))
         #print_msg("=======================wallet up to date: %s" % wal.is_up_to_date())
         #print_msg("=======================Contract %s has balance: %s" % (i, wal.get_balance()))
-        balancesStandard[con['walletFile']] = wal.get_balance()
+        
         if "address" in con.keys():
             #c = commands.Commands(None, wal, network)
             #addr = con["address"].to_ui_string()
@@ -174,7 +206,7 @@ def getContractWalletBalances(network):
             wal2 = getAddressWallet(i)
             wal2.start_threads(network)
             wal2.synchronize()
-            #wal2.wait_until_synchronized()
+            wal2.wait_until_synchronized()
             balancesMulti[con['address'].to_ui_string()] = wal2.get_balance()
     return balancesStandard, balancesMulti
 
@@ -239,6 +271,7 @@ def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
     contract["addrWalletFile"] = addrWalletFile
     #print_msg("contracts now: %s" % contracts)
     updateContracts()
+    multiWallets[idx] = wal
     return contract
     
     
@@ -256,10 +289,13 @@ def maketx_from_multisig(idx, to_addr, network):
     #addr_balance = c.getaddressbalance(address_str)
     #total_balance = float(addr_balance['confirmed'])+float(addr_balance['unconfirmed'])
     #total_balance = int(total_balance*COIN)
-    (standard, multis) = getContractWalletBalances(network)
+    #(standard, multis) = getContractWalletBalances(network)
+    startSyncMultiWallet(idx, network)
+    walletAddr.wait_until_synchronized()
+    multis = getMultiBalances()
     #print(multis)
     total_balance = sum(multis[address_str])
-    print("Cash Rip********************************total balance: {}".format(total_balance))
+    print_msg("Cash Rip********************************total balance: {}".format(total_balance))
     if total_balance == 0:
         raise Exception("This contract has no funds yet.")
     #hist = c.getaddresshistory(address_str) 
@@ -274,7 +310,7 @@ def maketx_from_multisig(idx, to_addr, network):
             if output["address"].to_ui_string() == address_str:
                 output["prevout_hash"] = tx["tx_hash"]
                 prev_relevant_outputs.append(output)
-    print("********************************prev_relevant_outputs is: {}".format(prev_relevant_outputs))'''
+    print_msg("********************************prev_relevant_outputs is: {}".format(prev_relevant_outputs))'''
     inp = []
     for output in utxos:
         inp.append( {"value": output["value"], 
@@ -301,7 +337,7 @@ def maketx_from_multisig(idx, to_addr, network):
     fee = get_tx_size(txS)*2    # we multiply the size by 2 because we are not sure how much bigger the partner's signature will make the transaction. But it should not double it in size. Fee should be less than 2 satoshis/byte.
     tx["outputs"][0]["value"] = int(total_balance-fee)     
     #print(tx["outputs"][0]["value"])
-    print("Cash Rip********************************tx fee will be {}".format(fee))
+    print_msg("Cash Rip********************************tx fee will be {}".format(fee))
     txS = c.serialize(tx)
     #print (c.deserialize(txS))
     signedtx = c.signtransaction(txS)
@@ -319,7 +355,7 @@ def sign_broadcast_tx_from_partner(tx, my_wallet_index, network):
         if None in i['signatures']:
             return False
     c.broadcast(txSigned)
-    print("Cash Rip********************************Transaction of size {} bytes has been broadcast.".format(get_tx_size(txSigned)))
+    print_msg("Cash Rip********************************Transaction of size {} bytes has been broadcast.".format(get_tx_size(txSigned)))
     return True
 
 def test():
@@ -391,6 +427,9 @@ def testImportedAddrWallet(addrStr):
     wal.wait_until_synchronized()
     bal = wal.get_balance()
     print(bal)
+
+contracts = loadContracts()
+multiWallets = getMultiWallets()
 
 def main():
     import argparse

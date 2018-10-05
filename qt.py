@@ -27,11 +27,10 @@ from . import cashrip
 
 class cashripQT(QWidget):
 
-    update_signal = pyqtSignal()
-
-    def __init__(self, window):
+    def __init__(self, window, parent):
         super().__init__()
         self.window = window
+        self.parent = parent
         self.config = window.config
         self.title = 'CashRipQT'
         self.network = self.window.network
@@ -40,6 +39,8 @@ class cashripQT(QWidget):
         if not os.path.isdir(cashrip.topDir):
             os.mkdir(cashrip.topDir)
         cashrip.contracts = cashrip.loadContracts()
+        cashrip.multiWallets = cashrip.getMultiWallets()
+        cashrip.startSyncWallets(cashrip.multiWallets, self.network)
         self.initUI()
     
     def initUI(self):
@@ -93,16 +94,10 @@ class cashripQT(QWidget):
         #self.table.setColumnWidth(3,230)
         #self.table.horizontalHeaderItem().setTextAlignment(Qt.AlignHCenter)
         self.table.update()
-        self.update_signal.connect(self.run_update)
-        #self.tableUpdater = threading.Thread(target=self.updateTableLoop)
-        #self.tableUpdater.daemon = True
-        self.keepUpdating = True
-        self.tableUpdater = TaskThread(self)
-        self.tableUpdater.add(self.updateTableLoop)
-        self.tableUpdater.start()
+
         #listWidget.currentItemChanged.connect(self.item_click)
-        self.textArea = QLabel("Here is some text.")
-        self.textArea.setText('Please select the contract you wish to use above.\nContract information (x_pubkey or transaction hex) goes in the box below.')
+        self.textArea = QLabel('Please select the contract you wish to use above.\nContract information (x_pubkey or transaction hex) goes in the box below.')
+        #self.textArea.setText('Please select the contract you wish to use above.\nContract information (x_pubkey or transaction hex) goes in the box below.')
         self.textBox = QPlainTextEdit(self)
         self.textBox.setPlainText('')
 
@@ -143,11 +138,6 @@ class cashripQT(QWidget):
         #print(self.currentRow())
         #print(self.table.currentRow())
 
-    def updateTableLoop(self):
-        while self.keepUpdating:
-            time.sleep(6)
-            self.update_signal.emit()
-
     def getCurrentContract(self):
         item = self.table.currentItem()
         if item:
@@ -156,9 +146,9 @@ class cashripQT(QWidget):
             self.textBox.setPlainText("Please select a contract above, or create a new one via Invite or Accept.")
             return None
     
-    @pyqtSlot()
-    def run_update(self):
-        self.table.update()
+    #@pyqtSlot()
+    #def run_update(self):
+    #    self.table.update()
 
     def invite(self):
         self.textBox.setPlainText("Please wait . . .")
@@ -166,7 +156,7 @@ class cashripQT(QWidget):
         wallet, contract = cashrip.genContractWallet()
         contract["label"] = "buyer"
         cashrip.updateContracts()
-        self.table.update()
+        self.parent.update()
         self.textBox.setPlainText("Give this x_pubkey to the other party:\n{}".format(contract['my_x_pubkey']))
     
     def accInvite(self):
@@ -180,14 +170,19 @@ class cashripQT(QWidget):
         wallet, contract = cashrip.genContractWallet()
         contract["label"] = "merchant"
         cashrip.updateContracts()
+        idx = len(cashrip.contracts)-1
         try:
-            contract = cashrip.create_multisig_addr(len(cashrip.contracts)-1, xpub)
+            contract = cashrip.create_multisig_addr(idx, xpub)
             self.textBox.setPlainText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
-            self.table.update()
+            self.parent.update()
         except:
             self.textBox.setPlainText("Something was wrong with the x_pubkey you pasted.")
-            cashrip.delContract(len(cashrip.contracts)-1)
-            self.table.update()
+            cashrip.delContract(idx)
+            self.parent.update()
+
+        if self.textBox.document().toPlainText()[:4] == "Your":
+            #print("we here")
+            cashrip.startSyncMultiWallet(idx, self.network)
 
     def checkAddress(self):
         xpub = self.textBox.document().toPlainText()
@@ -220,6 +215,7 @@ class cashripQT(QWidget):
                 return
             if contract["address"] == addr:
                 self.textBox.setPlainText("Success. You and your partner generated the same address. You can now send funds to {}".format(addrOrig))
+                cashrip.startSyncMultiWallet(currentContract, self.network)
             else:
                 self.textBox.setPlainText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
                 os.remove(contract['addrWalletFile']) 
@@ -231,7 +227,8 @@ class cashripQT(QWidget):
                 del contract["gen_by_me"]   
                 del contract["redeemScript"]    
                 cashrip.updateContracts()
-            self.table.update()
+                cashrip.multiWallets[currentContract] = None
+            self.parent.update()
 
     def requestRelease(self):
         addr = self.addressBox.text()
@@ -283,7 +280,8 @@ class cashripQT(QWidget):
                 buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if buttonReply == QMessageBox.Yes:
                 cashrip.delContract(currentContract)
-                self.table.update()
+                #self.table.update()
+                self.parent.update()
             else:
                 return
 
@@ -326,7 +324,11 @@ class cashRipList(MyTreeWidget):
 
     def on_update(self):
         #print("Updating tables")
-        standard, multi = cashrip.getContractWalletBalances(self.parent.network)
+        #standard, multi = cashrip.getContractWalletBalances(self.parent.network)
+        #print(len(cashrip.contracts))
+        #print(len(cashrip.multiWallets))
+        #print(cashrip.multiWallets)
+        multi = cashrip.getMultiBalances()
         item = self.currentItem()
         current_id = int(item.text(0)) if item else None
         
@@ -349,6 +351,9 @@ class cashRipList(MyTreeWidget):
     #def onItemSelectionChanged(self):
     #    pass
 
+class SignalDummy(QObject):
+    update_signal = pyqtSignal()
+
 class Plugin(BasePlugin):
 
     def fullname(self):
@@ -366,6 +371,14 @@ class Plugin(BasePlugin):
         self.tabs = []
         self.config = config
         
+        self.signal_dummy = SignalDummy()
+        self.signal_dummy.update_signal.connect(self.update)
+        #self.tableUpdater = threading.Thread(target=self.updateTableLoop)
+        #self.tableUpdater.daemon = True
+        self.keepUpdating = True
+        self.tableUpdater = TaskThread(self.signal_dummy)
+        self.tableUpdater.add(self.updateTableLoop)
+        self.tableUpdater.start()
         #self.wallet_windows = {}
 
     @hook
@@ -375,6 +388,11 @@ class Plugin(BasePlugin):
             return
         for window in gui.windows:
             self.load_wallet(window.wallet, window)
+    
+    def updateTableLoop(self):
+        while self.keepUpdating:
+            time.sleep(6)
+            self.signal_dummy.update_signal.emit()
 
     @hook
     def load_wallet(self, wallet, window):
@@ -382,7 +400,7 @@ class Plugin(BasePlugin):
         Hook called when a wallet is loaded and a window opened for it.
         """
         self.windows.append(window)
-        tab = cashripQT(window)
+        tab = cashripQT(window, self)
         self.tabs.append(tab)
         #self.tab.set_coinshuffle_addrs()
         icon = QIcon(":icons/tab_coins.png")
@@ -397,10 +415,10 @@ class Plugin(BasePlugin):
     @hook
     def on_close_window(self, window):
         idx = self.windows.index(window)
-        tab = self.tabs[idx]
+        #tab = self.tabs[idx]
         del self.windows[idx]
-        tab.tableUpdater.stop()
-        tab.keepUpdating = False
+        #tab.tableUpdater.stop()
+        #tab.keepUpdating = False
         del self.tabs[idx]
 
     def on_close(self):
@@ -411,10 +429,15 @@ class Plugin(BasePlugin):
             tab = self.tabs[idx]
             tabIndex = w.tabs.indexOf(tab)
             w.tabs.removeTab(tabIndex)
-            tab.tableUpdater.stop()
-            tab.keepUpdating = False
+        self.tableUpdater.stop()
+        self.keepUpdating = False
         self.windows.clear()
         self.tabs.clear()
+    
+    #@pyqtSlot()
+    def update(self):
+        for tab in self.tabs:
+            tab.table.update()
             
     def requires_settings(self):
         return False
