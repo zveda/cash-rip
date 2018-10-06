@@ -34,7 +34,7 @@ from contextlib import redirect_stdout, redirect_stderr
 import sys, copy, os
 #from electroncash.networks import NetworkConstants
 #NetworkConstants.set_testnet()
-sys.stderr = open('/dev/null', 'w')
+#sys.stderr = open('/dev/null', 'w')
 
 topDir = './cash_rip_data'
 
