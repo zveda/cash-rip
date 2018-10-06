@@ -183,6 +183,7 @@ def getMultiBalances():
             balances[con['address'].to_ui_string()] = wal.get_balance()
     return balances
 
+#This does not get used anymore
 def getContractWalletBalances(network):
     balancesStandard = {}
     balancesMulti = {}
