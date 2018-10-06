@@ -34,10 +34,9 @@ from contextlib import redirect_stdout, redirect_stderr
 import sys, copy, os
 #from electroncash.networks import NetworkConstants
 #NetworkConstants.set_testnet()
-#f = open('/dev/null', 'w')
-#sys.stderr = f
+sys.stderr = open('/dev/null', 'w')
 
-topDir = '.'
+topDir = './cash_rip_data'
 
 def genContractWallet(nickname=None):
     path = os.path.join(topDir, 'wallets')
