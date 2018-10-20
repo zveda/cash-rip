@@ -36,6 +36,7 @@ import sys, copy, os
 #NetworkConstants.set_testnet()
 #sys.stderr = open('/dev/null', 'w')
 
+#TODO make cashrip a class, instance created in Plugin class, topDir given as init argument
 topDir = './cash_rip_data'
 
 def genContractWallet(nickname=None):
@@ -500,7 +501,8 @@ def main():
     elif args.command == 'genmultisig': 
         #with redirect_stderr(f):
         contract = create_multisig_addr(args.contractindex, args.x_pubkey)
-        print("\nAddress: {}\n Your x_pubkey: {}\n Partner x_pubkey: {}\n".format(contract["address"], contract["my_x_pubkey"], contract["partner_x_pubkey"]))
+        #print("\nAddress: {}\n Your x_pubkey: {}\n Partner x_pubkey: {}\n".format(contract["address"], contract["my_x_pubkey"], contract["partner_x_pubkey"]))
+        print("\nAddress: {}\n Your x_pubkey: {}\n".format(contract["address"], contract["my_x_pubkey"]))
         print("You can now send funds to the multisig address {} This will tear your bitcoin cash in half.".format(contract["address"]))
 
     elif args.command == 'checkaddress':
