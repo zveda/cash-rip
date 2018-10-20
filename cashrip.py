@@ -330,7 +330,7 @@ def maketx_from_multisig(idx, to_addr, network):
             i["x_pubkeys"] = [contract["partner_x_pubkey"], contract["my_x_pubkey"]]
     outp = [{        "type": 0, 
                     "address": to_addr, 
-                    "value": total_balance-500, 
+                    "value": total_balance-500,    #this 500 will never be used as fee anyway. fee calculated in next section.
                     "prevout_n": 0}]
     tx = {"version":1, "lockTime":0, "outputs": outp, "inputs": inp}
     #print(tx)
