@@ -213,7 +213,7 @@ class cashripQT(QWidget):
                 self.parent.update()
 
             if self.textArea2.text()[:4] == "Your":
-                print("we here")
+                #print("we here")
                 cashrip.startSyncMultiWallet(idx, self.network)
 
     def checkAddress(self):
