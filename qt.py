@@ -100,7 +100,8 @@ class cashripQT(QWidget):
         #self.textArea2 = QLabel('Contract information (x_pubkey or transaction hex) goes in the box below.')
         self.textArea2 = QLabel('')
         self.textArea2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-        self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+        self.textArea2.setStyleSheet("color: rgb(0, 0, 0);")
+        self.textArea2.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         #self.textArea.setText('Please select the contract you wish to use above.\nContract information (x_pubkey or transaction hex) goes in the box below.')
         #self.textBox = QPlainTextEdit(self)
         #self.textBox.setPlainText('')
@@ -163,7 +164,6 @@ class cashripQT(QWidget):
         self.clearTextArea()
         buttonReply = QMessageBox.question(self, 'PyQt5 message', "This will create a new contract", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if buttonReply == QMessageBox.Yes:
-            self.textArea2.setStyleSheet("color: rgb(0, 0, 0);")
             self.textArea2.setText("Please wait . . .")
             self.textArea2.repaint()
             wallet, contract = cashrip.genContractWallet()
@@ -183,7 +183,7 @@ class cashripQT(QWidget):
             if xpub[:2] != "ff" or len(xpub) < 100:
                 #self.textBox.setStyleSheet("background-color: rgb(255, 0, 0);")
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
-                self.textArea2.setText("The x_pubkey belonging to your partner that you entered is invalid.")
+                self.textArea2.setText("The x_pubkey that you entered is invalid.")
                 return
             self.textArea2.setText("Please wait . . .")
             self.textArea2.repaint()
@@ -197,12 +197,12 @@ class cashripQT(QWidget):
                 self.parent.update()
             except:
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
-                self.textArea2.setText("Something was wrong with the x_pubkey you pasted.")
+                self.textArea2.setText("Something was wrong with the x_pubkey you entered.")
                 cashrip.delContract(idx)
                 self.parent.update()
 
-            if self.textBox.document().toPlainText()[:4] == "Your":
-                #print("we here")
+            if self.textArea2.text()[:4] == "Your":
+                print("we here")
                 cashrip.startSyncMultiWallet(idx, self.network)
 
     def checkAddress(self):
@@ -222,23 +222,28 @@ class cashripQT(QWidget):
         try:
             addr = Address.from_string(addrOrig)
         except:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("The multisig address you entered is invalid.")
             return
         if addr.kind != Address.ADDR_P2SH:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("The address you entered was not a multisig address.")
             return
 
         xpub = dialog.xpub.text()
         if xpub[:2] != "ff" or len(xpub) < 100:
-            self.textArea2.setText("The x_pubkey belonging to your partner that you entered is invalid.")
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("The x_pubkey that you entered is invalid.")
             return
 
         currentContract = self.getCurrentContract()
         if currentContract != None:
             if "address" in cashrip.contracts[currentContract]:
+                self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("This contract already has an address. Maybe you selected the wrong contract?")
                 return
             if cashrip.contracts[currentContract]["my_x_pubkey"] == xpub:
+                self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("You entered your own x_pubkey, not your partner's.")
                 return   
             try: 
@@ -246,13 +251,14 @@ class cashripQT(QWidget):
                 self.textArea2.repaint()
                 contract = cashrip.create_multisig_addr(currentContract, xpub, False)
             except:
+                self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("Something was wrong with the x_pubkey you pasted.")
                 return
             if contract["address"] == addr:
-                self.textArea2.setStyleSheet("color: rgb(0, 0, 0);")
                 self.textArea2.setText("Success. You and your partner generated the same address. You can now send funds to {}".format(addrOrig))
                 cashrip.startSyncMultiWallet(currentContract, self.network)
             else:
+                self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
                 os.remove(contract['addrWalletFile']) 
                 del contract["addrWalletFile"]
@@ -284,6 +290,7 @@ class cashripQT(QWidget):
                 try:
                     tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
                 except Exception as e:
+                    self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                     self.textArea2.setText(str(e))
                     return 
                 self.textArea2.setText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
@@ -294,7 +301,8 @@ class cashripQT(QWidget):
         if ok:
             txhex = text
             if len(txhex) < 150:
-                self.textArea2.setText("Please enter the transaction hex into this box before hitting Release.")
+                self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+                self.textArea2.setText("The transaction hex you entered was too short.")
                 return
             currentContract = self.getCurrentContract()
             if currentContract != None:
@@ -305,8 +313,10 @@ class cashripQT(QWidget):
                     if sent:
                         self.textArea2.setText("Transaction was broadcast to the network.")
                     else:
+                        self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                         self.textArea2.setText("Transaction was not broadcast. Either you selected the wrong contract or the transaction hex did not contain a valid signature.")
                 except:
+                    self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                     self.textArea2.setText("Something went wrong. Maybe the hex value was invalid.")            
 
     def delContract(self):
@@ -347,10 +357,8 @@ class CheckAddressDialog(QDialog):
         self.resize(self.sizeHint())
 
     def accept(self):
-        print("oi", self.parent)
         self.parent.checkAddressAcc(self)
         self.close()
-        
 
     def createFormGroupBox(self):
         self.formGroupBox = QGroupBox()
@@ -361,7 +369,6 @@ class CheckAddressDialog(QDialog):
         layout.addRow(QLabel("x_pubkey:"), self.xpub)
         self.formGroupBox.setLayout(layout)
 
-
 class cashRipList(MyTreeWidget):
     #filter_columns = [0, 2]
     def __init__(self, parent):
@@ -370,7 +377,6 @@ class cashRipList(MyTreeWidget):
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
         #self.setColumnWidth(1,5000)
-        #self.itemSelectionChanged.connect(self.onItemSelectionChanged)
 
     def create_menu(self, position):
         menu = QMenu()
@@ -401,9 +407,6 @@ class cashRipList(MyTreeWidget):
     def on_update(self):
         #print("Updating tables")
         #standard, multi = cashrip.getContractWalletBalances(self.parent.network)
-        #print(len(cashrip.contracts))
-        #print(len(cashrip.multiWallets))
-        #print(cashrip.multiWallets)
         multi = cashrip.getMultiBalances()
         item = self.currentItem()
         current_id = int(item.text(0)) if item else None
@@ -424,8 +427,6 @@ class cashRipList(MyTreeWidget):
             if i == current_id:
                 self.setCurrentItem(item)
     
-    #def onItemSelectionChanged(self):
-    #    pass
 class SignalDummy(QObject):
     update_signal = pyqtSignal()
 
