@@ -332,8 +332,6 @@ class cashRipList(MyTreeWidget):
         item = self.currentItem()
         current_id = int(item.text(0)) if item else None
         
-        #self.setCurrentItem(None)
-        #time.sleep(0.1)
         self.clear()
         items = []
         for i,c in enumerate(cashrip.contracts):
