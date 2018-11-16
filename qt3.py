@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import *
 from electroncash.i18n import _
 from electroncash import Network
 from electroncash.bitcoin import COIN
-from electroncash.address import Address
+from electroncash.address import Address, AddressError
 from electroncash.plugins import BasePlugin, hook
 from electroncash_gui.qt.util import EnterButton, Buttons, CloseButton, MessageBoxMixin, Buttons, MyTreeWidget, TaskThread
 from electroncash_gui.qt.util import OkButton, WindowModalDialog
@@ -53,7 +53,7 @@ class cashripQT(QWidget):
         cashrip.multiWallets = cashrip.getMultiWallets()
         cashrip.startSyncWallets(cashrip.multiWallets, self.network)
         self.initUI()
-    
+    # qt.py and qt3.py are identical starting from this line until almost end of file, except for if __name__.
     def initUI(self):
         QToolTip.setFont(QFont('SansSerif', 10))
         #self.setToolTip('This is a <b>QWidget</b> widget')
@@ -204,25 +204,30 @@ class cashripQT(QWidget):
             idx = len(cashrip.contracts)-1
             try:
                 contract = cashrip.create_multisig_addr(idx, xpub)
-                self.textArea2.setText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
-                self.parent.update()
             except:
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("Something was wrong with the x_pubkey you entered.")
                 cashrip.delContract(idx)
                 self.parent.update()
+                return
 
-            if self.textArea2.text()[:4] == "Your":
-                #print("we here")
-                cashrip.startSyncMultiWallet(idx, self.network)
+            self.textArea2.setText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
+            self.parent.update()
+            #if self.textArea2.text()[:4] == "Your":
+            cashrip.startSyncMultiWallet(idx, self.network)
 
     def checkAddress(self):
         self.clearTextArea()
         currentContract = self.getCurrentContract()
         if currentContract == None:
             return
+        if "address" in cashrip.contracts[currentContract]:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("This contract already has an address. Maybe you selected the wrong contract?")
+            return
         #text, ok = QInputDialog.getText(self, "Check Address","Your partner's x_pubkey:", QLineEdit.Normal, "")
         dialog = CheckAddressDialog(self)
+        dialog.currentContract = currentContract
         dialog.show()
         #dialog.exec_()
         self.dialog = dialog
@@ -234,7 +239,7 @@ class cashripQT(QWidget):
         addrOrig = dialog.address.text()
         try:
             addr = Address.from_string(addrOrig)
-        except:
+        except AddressError as e:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("The multisig address you entered is invalid.")
             return
@@ -249,11 +254,8 @@ class cashripQT(QWidget):
             self.textArea2.setText("The x_pubkey that you entered is invalid.")
             return
 
-        currentContract = self.getCurrentContract()
-        if "address" in cashrip.contracts[currentContract]:
-            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
-            self.textArea2.setText("This contract already has an address. Maybe you selected the wrong contract?")
-            return
+        #currentContract = self.getCurrentContract()
+        currentContract = dialog.currentContract
         if cashrip.contracts[currentContract]["my_x_pubkey"] == xpub:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("You entered your own x_pubkey, not your partner's.")
@@ -289,25 +291,39 @@ class cashripQT(QWidget):
         currentContract = self.getCurrentContract()
         if currentContract == None:
             return
+        if "address" not in cashrip.contracts[currentContract]:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("This contract does not have a multisig address yet.")
+            return
+        item = self.table.currentItem()
+        balance = float(item.text(3))+float(item.text(4))
+        if balance == 0:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("This contract has no funds yet.")
+            return
         text, ok = QInputDialog.getText(self, "Request Release","Address to release funds to:", QLineEdit.Normal, "")
         if ok:
             addr = text
             try:
-                addr = Address.from_string(addr)
-            except:
+                #addr = Address.from_string(addr)
+                addrCheck = Address.from_string(addr)
+            except AddressError as e:
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("The release address you entered was invalid.")
                 return
-            if currentContract != None:
+            try:
                 self.textArea2.setText("Please wait . . .")
                 self.textArea2.repaint()
-                try:
-                    tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
-                except Exception as e:
-                    self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
-                    self.textArea2.setText(str(e))
-                    return 
-                self.textArea2.setText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
+                tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
+            except ValueError as e:
+                self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+                self.textArea2.setText(str(e))
+                return 
+            # EC 3.3.1 needs output address to be Address object rather than String. Giving it String will cause AssertionError. TypeError is caused if you give Address object to EC 3.3.2 - this won't run for now.
+            except (AssertionError,TypeError) as e: 
+                #print(type(e)) 
+                tx = cashrip.maketx_from_multisig(currentContract, addrCheck, self.network)
+            self.textArea2.setText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
 
     def release(self):
         self.clearTextArea()

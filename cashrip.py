@@ -276,12 +276,12 @@ def create_multisig_addr(idx, partner_x_pubkey, generated_by_me=True):
     return contract
     
     
-#idx is contract index, to_addr is Address object
+#idx is contract index, to_addr is address string (used to be address object in EC 3.3.1)
 def maketx_from_multisig(idx, to_addr, network):
     #initial_params = {'num_sig': 2, 'sequence': 4294967294, 'signatures': [None, None], 'type': 'p2sh'}
     contract = contracts[idx]
     if "address" not in contract:
-        raise Exception("This contract does not have a multisig address yet.")
+        raise ValueError("This contract does not have a multisig address yet.")
         #sys.exit()    
     wallet = getContractWallet(idx)
     walletAddr = getAddressWallet(idx)
@@ -298,7 +298,7 @@ def maketx_from_multisig(idx, to_addr, network):
     total_balance = sum(multis[address_str])
     print_msg("Cash Rip********************************total balance: {}".format(total_balance))
     if total_balance == 0:
-        raise Exception("This contract has no funds yet.")
+        raise ValueError("This contract has no funds yet.")
     #hist = c.getaddresshistory(address_str) 
     utxos = walletAddr.get_utxos()
     #print("********************************hist is: {}".format(hist))
@@ -328,7 +328,7 @@ def maketx_from_multisig(idx, to_addr, network):
         for i in inp:
             i["pubkeys"] = [contract["partner_pubkey"], contract["my_pubkey"]]
             i["x_pubkeys"] = [contract["partner_x_pubkey"], contract["my_x_pubkey"]]
-    outp = [{        "type": 0, 
+    outp = [{       "type": 0, 
                     "address": to_addr, 
                     "value": total_balance-500,    #this 500 will never be used as fee anyway. fee calculated in next section.
                     "prevout_n": 0}]
