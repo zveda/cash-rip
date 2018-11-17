@@ -21,7 +21,7 @@ from electroncash_gui.qt.util import EnterButton, Buttons, CloseButton, MessageB
 from electroncash_gui.qt.util import OkButton, WindowModalDialog
 from electroncash.util import user_dir
 import electroncash.version, os
-from . import cashrip
+from .cashrip import CashRip
 
 #sys.stderr = open('/dev/null', 'w')
 
@@ -32,15 +32,8 @@ class cashripQT(QWidget):
         self.window = window
         self.parent = parent
         self.config = window.config
+        self.cashRip = self.parent.cashRip
         self.title = 'CashRipQT'
-        self.network = self.window.network
-        #cashrip.topDir = window.get_wallet_folder()+'/cash_rip_data'
-        cashrip.topDir = os.path.join(self.config.path, 'cash_rip_data')
-        if not os.path.isdir(cashrip.topDir):
-            os.mkdir(cashrip.topDir)
-        cashrip.contracts = cashrip.loadContracts()
-        cashrip.multiWallets = cashrip.getMultiWallets()
-        cashrip.startSyncWallets(cashrip.multiWallets, self.network)
         self.initUI()
     
     # qt.py and qt3.py are identical starting from this line until almost end of file, except for if __name__.
@@ -82,7 +75,7 @@ class cashripQT(QWidget):
         self.buttons.addWidget(btn5)
 
         btn6 = QPushButton('Delete Contract', self)
-        btn6.setToolTip('Delete selected <b>contract</b>. Do not delete any contract that still contains funds as you will then not be able to release those funds in the future.')
+        btn6.setToolTip('Delete selected <b>contract</b>. Do not delete any contract that still contains funds as you will then be unable to release those funds in the future.')
         btn6.resize(btn6.sizeHint())
         btn6.clicked.connect(self.delContract)
         self.buttons.addWidget(btn6)
@@ -167,9 +160,9 @@ class cashripQT(QWidget):
         if buttonReply == QMessageBox.Yes:
             self.textArea2.setText("Please wait . . .")
             self.textArea2.repaint()
-            wallet, contract = cashrip.genContractWallet()
+            wallet, contract = self.cashRip.genContractWallet()
             contract["label"] = "buyer"
-            cashrip.updateContracts()
+            self.cashRip.updateContracts()
             self.parent.update()
             self.textArea2.setText("Give this x_pubkey to the other party:\n{}".format(contract['my_x_pubkey']))
         else:
@@ -188,30 +181,30 @@ class cashripQT(QWidget):
                 return
             self.textArea2.setText("Please wait . . .")
             self.textArea2.repaint()
-            wallet, contract = cashrip.genContractWallet()
+            wallet, contract = self.cashRip.genContractWallet()
             contract["label"] = "merchant"
-            cashrip.updateContracts()
-            idx = len(cashrip.contracts)-1
+            self.cashRip.updateContracts()
+            idx = len(self.cashRip.contracts)-1
             try:
-                contract = cashrip.create_multisig_addr(idx, xpub)
+                contract = self.cashRip.create_multisig_addr(idx, xpub)
             except:
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText("Something was wrong with the x_pubkey you entered.")
-                cashrip.delContract(idx)
+                self.cashRip.delContract(idx)
                 self.parent.update()
                 return
 
             self.textArea2.setText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
             self.parent.update()
             #if self.textArea2.text()[:4] == "Your":
-            cashrip.startSyncMultiWallet(idx, self.network)
+            self.cashRip.startSyncMultiWallet(idx)
 
     def checkAddress(self):
         self.clearTextArea()
         currentContract = self.getCurrentContract()
         if currentContract == None:
             return
-        if "address" in cashrip.contracts[currentContract]:
+        if "address" in self.cashRip.contracts[currentContract]:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("This contract already has an address. Maybe you selected the wrong contract?")
             return
@@ -246,21 +239,21 @@ class cashripQT(QWidget):
 
         #currentContract = self.getCurrentContract()
         currentContract = dialog.currentContract
-        if cashrip.contracts[currentContract]["my_x_pubkey"] == xpub:
+        if self.cashRip.contracts[currentContract]["my_x_pubkey"] == xpub:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("You entered your own x_pubkey, not your partner's.")
             return   
         try: 
             self.textArea2.setText("Please wait . . .")
             self.textArea2.repaint()
-            contract = cashrip.create_multisig_addr(currentContract, xpub, False)
+            contract = self.cashRip.create_multisig_addr(currentContract, xpub, False)
         except:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("Something was wrong with the x_pubkey you pasted.")
             return
         if contract["address"] == addr:
             self.textArea2.setText("Success. You and your partner generated the same address. You can now send funds to {}".format(addrOrig))
-            cashrip.startSyncMultiWallet(currentContract, self.network)
+            self.cashRip.startSyncMultiWallet(currentContract)
         else:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
@@ -272,8 +265,8 @@ class cashripQT(QWidget):
             del contract["partner_pubkey"]
             del contract["gen_by_me"]   
             del contract["redeemScript"]    
-            cashrip.updateContracts()
-            cashrip.multiWallets[currentContract] = None
+            self.cashRip.updateContracts()
+            self.cashRip.multiWallets[currentContract] = None
         self.parent.update()
 
     def requestRelease(self):
@@ -281,7 +274,7 @@ class cashripQT(QWidget):
         currentContract = self.getCurrentContract()
         if currentContract == None:
             return
-        if "address" not in cashrip.contracts[currentContract]:
+        if "address" not in self.cashRip.contracts[currentContract]:
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("This contract does not have a multisig address yet.")
             return
@@ -304,7 +297,7 @@ class cashripQT(QWidget):
             try:
                 self.textArea2.setText("Please wait . . .")
                 self.textArea2.repaint()
-                tx = cashrip.maketx_from_multisig(currentContract, addr, self.network)
+                tx = self.cashRip.maketx_from_multisig(currentContract, addr)
             except ValueError as e:
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
                 self.textArea2.setText(str(e))
@@ -312,13 +305,23 @@ class cashripQT(QWidget):
             # EC 3.3.1 needs output address to be Address object rather than String. Giving it String will cause AssertionError. TypeError is caused if you give Address object to EC 3.3.2 - this won't run for now.
             except (AssertionError,TypeError) as e: 
                 #print(type(e)) 
-                tx = cashrip.maketx_from_multisig(currentContract, addrCheck, self.network)
+                tx = self.cashRip.maketx_from_multisig(currentContract, addrCheck)
             self.textArea2.setText("Send this transaction hex to your partner. He needs it to release your funds:\n{}".format(tx['hex']))
 
     def release(self):
         self.clearTextArea()
         currentContract = self.getCurrentContract()
         if currentContract == None:
+            return
+        if "address" not in self.cashRip.contracts[currentContract]:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("This contract does not have a multisig address yet.")
+            return
+        item = self.table.currentItem()
+        balance = float(item.text(3))+float(item.text(4))
+        if balance == 0:
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("This contract has no funds yet.")
             return
         text, ok = QInputDialog.getText(self, "Release","Transaction hex:", QLineEdit.Normal, "")
         if ok:
@@ -330,7 +333,7 @@ class cashripQT(QWidget):
             try:
                 self.textArea2.setText("Please wait . . .")
                 self.textArea2.repaint()
-                sent = cashrip.sign_broadcast_tx_from_partner(txhex, currentContract, self.network)
+                sent = self.cashRip.sign_broadcast_tx_from_partner(txhex, currentContract)
                 if sent:
                     self.textArea2.setText("Transaction was broadcast to the network.")
                 else:
@@ -353,7 +356,7 @@ class cashripQT(QWidget):
         else:
             buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if buttonReply == QMessageBox.Yes:
-            cashrip.delContract(currentContract)
+            self.cashRip.delContract(currentContract)
             #self.table.update()
             self.parent.update()
         else:
@@ -395,6 +398,7 @@ class cashRipList(MyTreeWidget):
     def __init__(self, parent):
         self.columns = [ _("Index"), _("Label"),_("Address"), _("Confirmed"), _("Unconfirmed"), _("Your x_pubkey") ]
         MyTreeWidget.__init__(self, parent, self.create_menu, self.columns, 5, [1])
+        self.cashRip = self.parent.parent.cashRip
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
         #self.setColumnWidth(1,5000)
@@ -418,23 +422,22 @@ class cashRipList(MyTreeWidget):
         label = item.text(1)
         if len(label) > 40:
             label = label[:50]
-        for c in cashrip.contracts:
+        for c in self.cashRip.contracts:
             if c["my_x_pubkey"] == item.text(5):
                 c["label"] = label
-                cashrip.updateContracts()
+                self.cashRip.updateContracts()
                 self.update()
                 return
 
     def on_update(self):
         #print("Updating tables")
-        #standard, multi = cashrip.getContractWalletBalances(self.parent.network)
-        multi = cashrip.getMultiBalances()
+        #standard, multi = self.cashRip.getContractWalletBalances()
+        multi = self.cashRip.getMultiBalances()
         item = self.currentItem()
         current_id = int(item.text(0)) if item else None
-        
         self.clear()
         items = []
-        for i,c in enumerate(cashrip.contracts):
+        for i,c in enumerate(self.cashRip.contracts):
             if "address" in c:
                 addr = c['address'].to_ui_string()
                 values = [str(i), c["label"], addr, str(multi[addr][0]/COIN), str(multi[addr][1]/COIN), c["my_x_pubkey"]]
@@ -464,6 +467,7 @@ class Plugin(BasePlugin):
         BasePlugin.__init__(self, parent, config, name)
         self.windows = []
         self.tabs = []
+        self.cashRip = None
         self.config = config
         
         self.signal_dummy = SignalDummy()
@@ -494,6 +498,9 @@ class Plugin(BasePlugin):
         """
         Hook called when a wallet is loaded and a window opened for it.
         """
+        if self.cashRip == None:
+            topDir = os.path.join(self.config.path, 'cash_rip_data')
+            self.cashRip = CashRip(topDir, window.network)
         self.windows.append(window)
         tab = cashripQT(window, self)
         self.tabs.append(tab)
