@@ -36,7 +36,7 @@ import sys, copy, os
 #NetworkConstants.set_testnet()
 #sys.stderr = open('/dev/null', 'w')
 
-#TODO make cashrip a class, instance created in Plugin class, topDir given as init argument
+#TODO make cashrip a class, instance created in Plugin class, topDir given as init argument -- done
 
 class CashRip():
     def __init__(self, topDir, network):

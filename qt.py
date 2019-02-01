@@ -35,7 +35,6 @@ class cashripQT(QWidget):
         self.cashRip = self.parent.cashRip
         self.title = 'CashRipQT'
         self.initUI()
-    
     # qt.py and qt3.py are identical starting from this line until almost end of file, except for if __name__.
     def initUI(self):
         QToolTip.setFont(QFont('SansSerif', 10))
@@ -352,7 +351,9 @@ class cashripQT(QWidget):
         balC = curItem.text(3)
         balU = curItem.text(4)
         if curItem.text(2)[:4] != 'Wait' and (balC != "0.0" or balU != "0.0"):
-            buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}? It contains funds and you will be unable to release them in the future.".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            #buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}? It contains funds and you will be unable to release them in the future.".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("Cannot delete Contract #{} as it contains funds.".format(currentContract))
         else:
             buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if buttonReply == QMessageBox.Yes:

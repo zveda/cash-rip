@@ -31,10 +31,10 @@ from electroncash.plugins import BasePlugin, hook
 from electroncash_gui.qt.util import EnterButton, Buttons, CloseButton, MessageBoxMixin, Buttons, MyTreeWidget, TaskThread
 from electroncash_gui.qt.util import OkButton, WindowModalDialog
 from electroncash.util import user_dir
-import electroncash.version
+import electroncash.version, os
 from cashrip import CashRip
 
-#sys.stderr = open('/dev/null', 'w')
+sys.stderr = open('/dev/null', 'w')
 
 class cashripQT(QWidget):
 
@@ -362,7 +362,9 @@ class cashripQT(QWidget):
         balC = curItem.text(3)
         balU = curItem.text(4)
         if curItem.text(2)[:4] != 'Wait' and (balC != "0.0" or balU != "0.0"):
-            buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}? It contains funds and you will be unable to release them in the future.".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            #buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}? It contains funds and you will be unable to release them in the future.".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
+            self.textArea2.setText("Cannot delete Contract #{} as it contains funds.".format(currentContract))
         else:
             buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if buttonReply == QMessageBox.Yes:
