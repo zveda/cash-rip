@@ -99,6 +99,9 @@ class CashRip():
     def delContract(self, idx):
         os.remove(self.contracts[idx]['walletFile'])
         if 'address' in self.contracts[idx]:
+            wal = self.multiWallets[idx]
+            if wal:
+                wal.stop_threads()
             os.remove(self.contracts[idx]['addrWalletFile'])
         del self.multiWallets[idx]
         del self.contracts[idx]
@@ -167,7 +170,7 @@ class CashRip():
         else:
             return None   
 
-    # multiWallets is a list of wallets for each contract, None if contract has no multisig address. idx's correspond between contracts and multiWallets.
+    # multiWallets is a list of wallets for all of the contracts, None if a contract has no multisig address. idx's correspond between contracts and multiWallets.
     def getMultiWallets(self):
         wallets = []
         for i in range(len(self.contracts)):

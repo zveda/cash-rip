@@ -52,40 +52,40 @@ class cashripQT(QWidget):
         #self.setToolTip('This is a <b>QWidget</b> widget')
         self.buttons = QHBoxLayout()
 
-        btn1 = QPushButton('Create Contract', self)
+        btn1 = QPushButton('1: Create Contract\n(buyer)', self)
         btn1.setToolTip('Creates a new contract.')
         btn1.resize(btn1.sizeHint())
         btn1.clicked.connect(self.invite)
         self.buttons.addWidget(btn1)
         
         #btn.move(50, 50)
-        btn2 = QPushButton('Accept Invite', self)
+        btn2 = QPushButton('2: Accept Invite\n(merchant)', self)
         btn2.setToolTip('Input: partner\'s <b>x_pubkey</b>.')
         btn2.resize(btn2.sizeHint())
         btn2.clicked.connect(self.accInvite)
         self.buttons.addWidget(btn2)
 
-        btn3 = QPushButton('Check Address', self)
+        btn3 = QPushButton('3: Check Address\n(buyer)', self)
         btn3.setToolTip('Input: your partner\'s generated multisig <b>address</b> and <b>x_pubkey</b>. Also select the <b>contract</b> you used to invite your partner.')
         btn3.resize(btn3.sizeHint())
         btn3.clicked.connect(self.checkAddress)
         self.buttons.addWidget(btn3)
 
-        btn4 = QPushButton('Request Release', self)
+        btn4 = QPushButton('4: Request Release', self)
         btn4.setToolTip('Input:  BCH <b>address</b> to which the funds will be released. Also select your <b>contract</b> that contains the funds to be released.')
         btn4.resize(btn4.sizeHint())
         btn4.clicked.connect(self.requestRelease)
         self.buttons.addWidget(btn4)
 
 
-        btn5 = QPushButton('Release', self)
+        btn5 = QPushButton('5: Release', self)
         btn5.setToolTip('Input: <b>hex code</b> sent by your partner. Also select your <b>contract</b> that contains the funds to be released.')
         btn5.resize(btn5.sizeHint())
         btn5.clicked.connect(self.release)
         self.buttons.addWidget(btn5)
 
         btn6 = QPushButton('Delete Contract', self)
-        btn6.setToolTip('Delete selected <b>contract</b>. Do not delete any contract that still contains funds as you will then be unable to release those funds in the future.')
+        btn6.setToolTip('Delete selected <b>contract</b>. You cannot delete any contract that still contains funds as you will then be unable to release those funds in the future.')
         btn6.resize(btn6.sizeHint())
         btn6.clicked.connect(self.delContract)
         self.buttons.addWidget(btn6)
@@ -204,7 +204,7 @@ class cashripQT(QWidget):
                 self.parent.update()
                 return
 
-            self.textArea2.setText("Your x_pubkey: {}\nYour multisig address: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["my_x_pubkey"], contract["address"]))
+            self.textArea2.setText("Your multisig address: {}\nYour x_pubkey: {}\nPlease share your x_pubkey and multisig address with your partner.".format(contract["address"], contract["my_x_pubkey"]))
             self.parent.update()
             #if self.textArea2.text()[:4] == "Your":
             self.cashRip.startSyncMultiWallet(idx)
@@ -365,8 +365,8 @@ class cashripQT(QWidget):
             #buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}? It contains funds and you will be unable to release them in the future.".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("Cannot delete Contract #{} as it contains funds.".format(currentContract))
-        else:
-            buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            return
+        buttonReply = QMessageBox.question(self, 'Confirmation', "Are you sure you want to delete Contract #{}?".format(currentContract), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if buttonReply == QMessageBox.Yes:
             self.cashRip.delContract(currentContract)
             #self.table.update()
@@ -561,7 +561,8 @@ if __name__ == '__main__':
     p = Plugin(None, None, None)
     network = Network(None)
     network.start()
-    p.cashRip = CashRip('./cash_rip_data', network)
+    topDir = os.path.join(os.getcwd(), 'cash_rip_data')
+    p.cashRip = CashRip(topDir, network)
     ex = cashripQT(p)
     p.tabs.append(ex)
     sys.exit(app.exec_())
