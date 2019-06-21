@@ -150,7 +150,8 @@ class cashripQT(QWidget):
     #def run_update(self):
     #    self.table.update()
     def clearTextArea(self):
-        self.textArea2.setStyleSheet("color: rgb(0, 0, 0);") 
+        #self.textArea2.setStyleSheet("color: rgb(0, 0, 0);")
+        self.textArea2.setStyleSheet("") 
         self.textArea2.setText("")
 
     def invite(self):
