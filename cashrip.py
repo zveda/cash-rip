@@ -27,7 +27,7 @@ from electroncash.address import Address
 from electroncash.storage import WalletStorage
 from electroncash.wallet import Wallet, ImportedAddressWallet
 from electroncash.mnemonic import Mnemonic
-from electroncash.util import print_msg, json_encode, json_decode
+from electroncash.util import print_msg, print_error, json_encode, json_decode
 from electroncash import SimpleConfig, Network, keystore, commands
 from electroncash.bitcoin import COIN
 from contextlib import redirect_stdout, redirect_stderr
@@ -77,6 +77,7 @@ class CashRip():
         storage.put('keystore', k.dump())
         storage.put('wallet_type', 'standard')
         wallet = Wallet(storage)
+        wallet.set_schnorr_enabled(False)
         wallet.update_password(None, '', True)
         wallet.synchronize()
         print_msg("Your wallet generation seed is:\n\"%s\"" % seed)
@@ -309,7 +310,7 @@ class CashRip():
         multis = self.getMultiBalances()
         #print(multis)
         total_balance = sum(multis[address_str])
-        print_msg("Cash Rip********************************total balance: {}".format(total_balance))
+        print_error("Cash Rip********************************total balance: {}".format(total_balance))
         if total_balance == 0:
             raise ValueError("This contract has no funds yet.")
         #hist = c.getaddresshistory(address_str) 
@@ -324,7 +325,7 @@ class CashRip():
                 if output["address"].to_ui_string() == address_str:
                     output["prevout_hash"] = tx["tx_hash"]
                     prev_relevant_outputs.append(output)
-        print_msg("********************************prev_relevant_outputs is: {}".format(prev_relevant_outputs))'''
+        print_error("********************************prev_relevant_outputs is: {}".format(prev_relevant_outputs))'''
         inp = []
         for output in utxos:
             inp.append( {"value": output["value"], 
@@ -351,7 +352,7 @@ class CashRip():
         fee = self.get_tx_size(txS)*2    # we multiply the size by 2 because we are not sure how much bigger the partner's signature will make the transaction. But it should not double it in size. Fee should be less than 2 satoshis/byte.
         tx["outputs"][0]["value"] = int(total_balance-fee)     
         #print(tx["outputs"][0]["value"])
-        print_msg("Cash Rip********************************tx fee will be {}".format(fee))
+        print_error("Cash Rip********************************tx fee will be {}".format(fee))
         txS = c.serialize(tx)
         #print (c.deserialize(txS))
         signedtx = c.signtransaction(txS)
@@ -369,21 +370,23 @@ class CashRip():
             if None in i['signatures']:
                 return False
         c.broadcast(txSigned)
-        print_msg("Cash Rip********************************Transaction of size {} bytes has been broadcast.".format(self.get_tx_size(txSigned)))
+        print_error("Cash Rip********************************Transaction of size {} bytes has been broadcast.".format(self.get_tx_size(txSigned)))
         return True
 
     def test(self):
-        stor = WalletStorage('/home/ilia/.electron-cash/wallets/default_wallet')
+        stor = WalletStorage('/home/ilia/.electron-cash/wallets/test/default_wallet')
         wal = Wallet(stor)
-        stor2 = WalletStorage('/home/ilia/.electron-cash/wallets/test_wallet')
+        wal.set_schnorr_enabled(False)
+        stor2 = WalletStorage('/home/ilia/.electron-cash/wallets/test/test_wallet')
         wal2 = Wallet(stor2)
+        wal2.set_schnorr_enabled(False)
         c = commands.Commands(None, wal, None)
         c2 = commands.Commands(None, wal2, None)
 
-        ao = Address.from_string("qq6cqr5sxgzrnrdfl62hrfy88pfhe89egqyld9nnj7")
-        #ao = "qq6cqr5sxgzrnrdfl62hrfy88pfhe89egqyld9nnj7"    
-        ai = Address.from_string("pqjdgep0cmscpvrk3n7euqqlqfmwk2770uagtjgcl5")
-        #ai = "pqjdgep0cmscpvrk3n7euqqlqfmwk2770uagtjgcl5"
+        #ao = Address.from_string("qq6cqr5sxgzrnrdfl62hrfy88pfhe89egqyld9nnj7")
+        ao = "qq6cqr5sxgzrnrdfl62hrfy88pfhe89egqyld9nnj7"    
+        #ai = Address.from_string("pqjdgep0cmscpvrk3n7euqqlqfmwk2770uagtjgcl5")
+        ai = "pqjdgep0cmscpvrk3n7euqqlqfmwk2770uagtjgcl5"
 
         outp = [{"type": 0, "address": ao, "value": 39500, "prevout_n": 0}]
 
@@ -541,9 +544,12 @@ def main():
         
 if __name__ == '__main__':
     main()
-    #test3()
-    #testImportedAddrWallet("ppssl66pryy3d34cd7feccjw69pdds4luqc3qkvx63")
-
-#test2()
-
-#(c,i) -- c is whether I want change address. i is index of address -- often 0,0
+    '''
+    network = Network(None)
+    network.start()
+    topDir = os.path.174join(os.getcwd(), 'cash_rip_data')
+    p = CashRip(topDir,174 network)
+    p.test()'''
+    #p.testImportedAddrWallet("ppssl66pryy3d34cd7feccjw69pdds4luqc3qkvx63")
+    #test2()
+    #(c,i) -- c is whether I want change address. i is index of address -- often 0,0
