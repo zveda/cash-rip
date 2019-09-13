@@ -91,7 +91,7 @@ class CashRip():
     #my_addr_index is always going to be 0 if the wallet is unused, so maybe previous line unnecessary
         my_pubkey = wallet.derive_pubkeys(False, my_addr_index)
         my_x_pubkey = self.get_x_pubkey(my_addr_index, wallet)
-        self.contracts.append({'walletFile': wallet.storage.path, "my_addr": my_addr, "my_pubkey": my_pubkey, "my_x_pubkey": my_x_pubkey, "nickname": nickname, "label": ""})
+        self.contracts.append({'walletFile': wallet.storage.path, "my_addr": my_addr.to_ui_string(), "my_pubkey": my_pubkey, "my_x_pubkey": my_x_pubkey, "nickname": nickname, "label": ""})
         #print(self.contracts)
         self.updateContracts()
         self.multiWallets.append(None)
@@ -112,26 +112,15 @@ class CashRip():
     #    if self.contracts == '' or self.contracts == []:
     #        print_message("Contracts list is empty. Something went wrong.")
     #        return
-        contracts2 = copy.deepcopy(self.contracts)
-        for c in contracts2:
-            c["my_addr"] = c["my_addr"].to_ui_string()
-            if "address" in c:
-                c["address"] = c["address"].to_ui_string()
-                c["partner_addr"] = c["partner_addr"].to_ui_string()
         path = os.path.join(self.topDir, 'contracts.txt')        
         f = open(path, 'w')
-        f.write(json_encode(contracts2))
+        f.write(json_encode(self.contracts))
         f.close()
 
     def backupContract(self, c):
-        c2 = copy.deepcopy(c)
-        c2["my_addr"] = c2["my_addr"].to_ui_string()
-        if "address" in c2:
-            c2["address"] = c2["address"].to_ui_string()
-            c2["partner_addr"] = c2["partner_addr"].to_ui_string()
         path = os.path.join(self.topDir, 'contracts-bkp.txt')
         f = open(path, 'a')
-        f.write(json_encode(c2))
+        f.write(json_encode(c))
         f.close()    
 
     def loadContracts(self):
@@ -142,11 +131,7 @@ class CashRip():
             #print('No contracts found.')
             return []
         contracts = json_decode(f.read())
-        for c in contracts:
-            c["my_addr"] = Address.from_string(c["my_addr"])
-            if "address" in c:
-                c["address"] = Address.from_string(c["address"])
-                c["partner_addr"] = Address.from_string(c["partner_addr"])
+
         #print(contracts)
         #contracts = json.loads(contracts)
         f.close()
@@ -195,7 +180,7 @@ class CashRip():
         for i,wal in enumerate(self.multiWallets):
             con = self.contracts[i]
             if "address" in con.keys():
-                balances[con['address'].to_ui_string()] = wal.get_balance()
+                balances[con['address']] = wal.get_balance()
         return balances
 
     #This does not get used anymore
@@ -222,7 +207,8 @@ class CashRip():
                 wal2.start_threads(self.network)
                 wal2.synchronize()
                 wal2.wait_until_synchronized()
-                balancesMulti[con['address'].to_ui_string()] = wal2.get_balance()
+                #balancesMulti[con['address'].to_ui_string()] = wal2.get_balance()
+                balancesMulti[con['address']] = wal2.get_balance()
         return balancesStandard, balancesMulti
 
     def get_tx_size(self, tx):
@@ -265,7 +251,8 @@ class CashRip():
             multiaddress = c.createmultisig(2, [contract["my_pubkey"], partner_pubkey])
         else:
             multiaddress = c.createmultisig(2, [partner_pubkey, contract["my_pubkey"]])
-        multiaddress["address"] = Address.from_string(multiaddress["address"])
+        multiaddress["address"] = Address.from_string(multiaddress["address"]).to_ui_string()
+        partner_address = partner_address.to_ui_string()
 
         contract.update(multiaddress)
         contract["partner_addr"] = partner_address
@@ -279,7 +266,8 @@ class CashRip():
         if storage.file_exists():
             os.remove(addrWalletFile)
             storage = WalletStorage(addrWalletFile)
-        wal = ImportedAddressWallet.from_text(storage, contract["address"].to_ui_string())
+        #wal = ImportedAddressWallet.from_text(storage, contract["address"].to_ui_string())
+        wal = ImportedAddressWallet.from_text(storage, contract["address"])
         wal.synchronize()
         wal.storage.write()
         print_msg("Wallet saved in '%s'" % wal.storage.path)
@@ -300,7 +288,7 @@ class CashRip():
         wallet = self.getContractWallet(idx)
         walletAddr = self.getAddressWallet(idx)
         c = commands.Commands(None, wallet, self.network)
-        address_str = contract['address'].to_ui_string()
+        address_str = contract['address']
         #addr_balance = c.getaddressbalance(address_str)
         #total_balance = float(addr_balance['confirmed'])+float(addr_balance['unconfirmed'])
         #total_balance = int(total_balance*COIN)
@@ -383,9 +371,7 @@ class CashRip():
         c = commands.Commands(None, wal, None)
         c2 = commands.Commands(None, wal2, None)
 
-        #ao = Address.from_string("qq6cqr5sxgzrnrdfl62hrfy88pfhe89egqyld9nnj7")
         ao = "qq6cqr5sxgzrnrdfl62hrfy88pfhe89egqyld9nnj7"    
-        #ai = Address.from_string("pqjdgep0cmscpvrk3n7euqqlqfmwk2770uagtjgcl5")
         ai = "pqjdgep0cmscpvrk3n7euqqlqfmwk2770uagtjgcl5"
 
         outp = [{"type": 0, "address": ao, "value": 39500, "prevout_n": 0}]
@@ -426,7 +412,7 @@ class CashRip():
     def test3(self):
         network = Network(None)
         network.start()
-        to_addr = Address.from_string("bitcoincash:qqj4pf98k326u53ns75ap7lm4xp7a9upyc9nwcxrun")
+        to_addr = "bitcoincash:qqj4pf98k326u53ns75ap7lm4xp7a9upyc9nwcxrun"
         tx = self.maketx_from_multisig(0, to_addr, network)
         print_msg("Are we broadcasting tx?: {}".format(tx))
         #if tx:
@@ -497,7 +483,7 @@ def main():
         #print(standard, multi)
         for i,c in enumerate(cashRip.contracts):
             if 'address' in c:
-                addr = c['address'].to_ui_string()
+                addr = c['address']
                 print("Contract index: {}\taddress: {}\tbalance: confirmed {} BCH, unconfirmed {} BCH\t".format(i, addr, multi[addr][0]/COIN, multi[addr][1]/COIN) ) 
             else:
                 print("Contract index: {}\t No multisig address generated yet.".format(i)) 
@@ -520,7 +506,7 @@ def main():
     elif args.command == 'checkaddress':
         #with redirect_stderr(f):
         contract = cashRip.create_multisig_addr(args.contractindex, args.x_pubkey, False)    
-        if contract["address"].to_ui_string() == args.address:
+        if contract["address"] == args.address:
             print("Success. You and your partner generated the same address. You can now send funds to {}".format(args.address))
         else:
             print("Something went wrong. You and your partner generated different addresses. Please double-check the x_pubkeys that you have sent to each other.")
@@ -529,7 +515,7 @@ def main():
     #with redirect_stderr(f):
         #network = Network(None)
         #network.start()
-        tx = cashRip.maketx_from_multisig(args.contractindex, Address.from_string(args.to_address))
+        tx = cashRip.maketx_from_multisig(args.contractindex, args.to_address)
 
         print("Send this transaction hex to your partner. He needs it to release your funds:")
         print(tx['hex'])

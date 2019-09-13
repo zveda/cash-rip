@@ -34,7 +34,7 @@ from electroncash.util import user_dir
 import electroncash.version, os
 from cashrip import CashRip
 
-sys.stderr = open('/dev/null', 'w')
+#sys.stderr = open('/dev/null', 'w')
 
 class cashripQT(QWidget):
 
@@ -262,7 +262,7 @@ class cashripQT(QWidget):
             self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
             self.textArea2.setText("Something was wrong with the x_pubkey you pasted.")
             return
-        if contract["address"] == addr:
+        if contract["address"] == addrOrig:
             self.textArea2.setText("Success. You and your partner generated the same address. You can now send funds to {}".format(addrOrig))
             self.cashRip.startSyncMultiWallet(currentContract)
         else:
@@ -299,7 +299,6 @@ class cashripQT(QWidget):
         if ok:
             addr = text
             try:
-                #addr = Address.from_string(addr)
                 addrCheck = Address.from_string(addr)
             except AddressError as e:
                 self.textArea2.setStyleSheet("color: rgb(255, 0, 0);")
@@ -452,7 +451,7 @@ class cashRipList(MyTreeWidget):
         items = []
         for i,c in enumerate(self.cashRip.contracts):
             if "address" in c:
-                addr = c['address'].to_ui_string()
+                addr = c['address']
                 values = [str(i), c["label"], addr, str(multi[addr][0]/COIN), str(multi[addr][1]/COIN), c["my_x_pubkey"]]
                 item = QTreeWidgetItem(values)
                 self.addTopLevelItem(item)
