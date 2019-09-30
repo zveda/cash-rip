@@ -28,7 +28,7 @@ In Electron Cash version 3.3.1 and above, go to Tools->Installed_Plugins, then A
 
 # Usage
 
-Short version: The buyer does Create Contract -> Check Address -> Send Funds -> Release in that order. The merchant does Accept Invite -> Send Goods -> RequestRelease in that order.
+Short version: The buyer does Create Contract -> Check Address -> Send Funds -> Release in that order. The merchant does Accept Invite -> Send Goods -> Request Release in that order.
 
 Long verson:
 
