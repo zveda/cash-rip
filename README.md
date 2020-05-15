@@ -8,12 +8,6 @@ multi-signature addresses and Bitcoin Cash payments.
 
 This plugin is licensed under the MIT open source license.
 
-## Write The Developer ##
-
-If you wish to contace me -- my email address is:
-
-  zveda "at" protonmail "dot" com
-
 ## About Electron Cash Plugins ##
 
 Electron Cash plugins have almost complete control over any wallets that are open.
